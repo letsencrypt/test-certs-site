@@ -1,0 +1,25 @@
+# New Project Checklist
+
+- [ ] Clone https://github.com/letsencrypt/gorepotemplate
+- [ ] Copy the `gorepotemplate` folder to a new project folder (`cp -r gorepotemplate <project name>`)
+- [ ] Change into the new project folder (`cd <project name>`)
+- [ ] Delete the existing `.git` folder from the template project (`rm -rf .git`)
+- [ ] Initialize a new git repo (`git init`)
+- [ ] Create the Github repoistory in the web UI. Do not select a project language for a `.gitignore`, or a license (these are included in `gorepotemplate`)
+- [ ] Add the Github repository as a git remote (`git remote add origin git@github.com:letsencrypt/<project name>.git`)
+- [ ] Set up the main repository settings (`https://github.com/letsencrypt/<projectname>/settings`):
+  - [ ] Disable Wikis, Sponsorships, Projects, and Discussions
+  - [ ] Only allow squash merging
+  - [ ] Automatically delete head branches
+- [ ] Set up collaborators and teams (`https://github.com/letsencrypt/<projectname/settings/access`):
+  - [ ] Add "@letsencrypt/boulder-developers" as "maintain"
+  - [ ] Add "@letsencrypt/ops" as "write"
+- [ ] Set up branches (`https://github.com/letsencrypt/<projectname>/settings/branches`):
+  - [ ] Ensure the default branch is `main`, not `master`
+  - [ ] Add a branch protection rule for `main`:
+    - [ ] Require pull requests before merging, require 1 approval, dismiss stale approvals upon new pushes, and require review from Code Owners
+    - [ ] Require status checks to pass before merging
+    - [ ] Require linear history
+    - [ ] Include administrators
+    - [ ] Restrict who can push to "@letsencrypt/boulder-developers"
+- [ ] Run `./checklist.complete.sh`
