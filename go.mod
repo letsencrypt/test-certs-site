@@ -1,3 +1,3 @@
-module github.com/letsencrypt/gorepotemplate
+module github.com/letsencrypt/test-certs-site
 
-go 1.23
+go 1.25
