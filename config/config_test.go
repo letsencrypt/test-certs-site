@@ -13,9 +13,9 @@ func TestLoadConfig(t *testing.T) {
 	expected := config.Config{
 		Sites: []config.Site{
 			{
-				RootCN:  "minica root ca 5345e6",
-				KeyType: "p256",
-				Profile: "shortlived",
+				IssuerCN: "minica root ca 5345e6",
+				KeyType:  "p256",
+				Profile:  "shortlived",
 				Domains: config.Domains{
 					Valid:   "minica-valid.localhost",
 					Expired: "minica-expired.localhost",
@@ -23,9 +23,9 @@ func TestLoadConfig(t *testing.T) {
 				},
 			},
 			{
-				RootCN:  "Interesting Salad Root Greens",
-				KeyType: "rsa2048",
-				Profile: "tlsserver",
+				IssuerCN: "Interesting Salad Root Greens",
+				KeyType:  "rsa2048",
+				Profile:  "tlsserver",
 				Domains: config.Domains{
 					Valid:   "valid.isrg.example.org",
 					Expired: "expired.isrg.example.org",

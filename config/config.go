@@ -39,8 +39,8 @@ type Config struct {
 
 // Site configures a particular site.
 type Site struct {
-	// RootCN is the Common Name that this certificate must chain up to.
-	RootCN string
+	// IssuerCN that the certificate chain must end in
+	IssuerCN string
 
 	// KeyType to use for this site. Should be "p256" or "rsa2048".
 	KeyType string
@@ -52,7 +52,7 @@ type Site struct {
 	Domains Domains
 }
 
-// Domains that this demo site will serve
+// Domains that this demo site will serve.
 type Domains struct {
 	Valid   string
 	Expired string
