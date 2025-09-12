@@ -17,50 +17,27 @@ func TestLoadConfig(t *testing.T) {
 				RootCN:  "minica root ca 5345e6",
 				KeyType: "p256",
 				Profile: "shortlived",
-				Files: config.Files{
-					Cert: "/testdata/test-certs-site/valid.crt",
-					Key:  "/testdata/test-certs-site/valid.key",
-				},
-				FilesNext: config.Files{
-					Cert: "/testdata/test-certs-site/valid.next.crt",
-					Key:  "/testdata/test-certs-site/valid.next.key",
-				},
 			},
 			"expired.test": {
 				Status:  "expired",
 				RootCN:  "minica root ca 5345e6",
 				KeyType: "p256",
 				Profile: "shortlived",
-				Files: config.Files{
-					Cert: "/testdata/test-certs-site/expired.crt",
-					Key:  "/testdata/test-certs-site/expired.key",
-				},
-				FilesNext: config.Files{
-					Cert: "/testdata/test-certs-site/expired.next.crt",
-					Key:  "/testdata/test-certs-site/expired.next.key",
-				},
 			},
 			"revoked.test": {
 				Status:  "revoked",
 				RootCN:  "minica root ca 5345e6",
 				KeyType: "p256",
 				Profile: "shortlived",
-				Files: config.Files{
-					Cert: "/testdata/test-certs-site/revoked.crt",
-					Key:  "/testdata/test-certs-site/revoked.key",
-				},
-				FilesNext: config.Files{
-					Cert: "/testdata/test-certs-site/revoked.next.crt",
-					Key:  "/testdata/test-certs-site/revoked.next.key",
-				},
 			},
 		},
 
 		ACME: config.ACME{
 			Directory: "https://localhost:14000/dir",
-			ClientKey: "/testdata/test-certs-site/acme.key",
 			CACerts:   "/testdata/pebble.crt",
 		},
+
+		DataDir: "/testdata/data_dir",
 	}
 
 	_, err := config.Load("non-existant.json")

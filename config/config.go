@@ -26,8 +26,13 @@ func Load(cfgPath string) (*Config, error) {
 
 // Config is the structure of the JSON configuration file.
 type Config struct {
-	// Sites is a map hostname -> Site specific configuration
+	// Sites is a map hostname to Site specific configuration.
 	Sites map[string]Site
+
+	// DataDir where the application will write its local state.
+	// This includes keys for certificates and ACME, as well as certificates.
+	// It should exist and be writable.
+	DataDir string
 
 	ACME ACME
 }
@@ -45,32 +50,12 @@ type Site struct {
 
 	// Profile selects the ACME profile to use for this certificate.
 	Profile string
-
-	// Files stored for this site.
-	Files Files
-
-	// FilesNext stores files during issuance that will be used next.
-	// Especially for "expired" sites, this may be a long time and so
-	// should be stored on durable storage.
-	FilesNext Files
-}
-
-// Files has a list of file paths on disk.
-type Files struct {
-	// Cert stores the x509 certificate and chain
-	Cert string
-
-	// Key storing private key for certificate
-	Key string
 }
 
 // ACME client configuration, shared between all sites.
 type ACME struct {
 	// Directory URL
 	Directory string
-
-	// ClientKey stores the JWS key used for authentication
-	ClientKey string
 
 	// CACerts file used when connecting via TLS to the CA.
 	// Optional and typically only used in test environments.
