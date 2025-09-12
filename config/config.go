@@ -1,4 +1,4 @@
-// Package config handles test-cert-site's configuration file loading
+// Package config handles test-cert-site's configuration file loading.
 package config
 
 import (
@@ -26,7 +26,7 @@ func Load(cfgPath string) (*Config, error) {
 
 // Config is the structure of the JSON configuration file.
 type Config struct {
-	// Sites is a list of sites to host
+	// Sites is a list of sites to host.
 	Sites []Site
 
 	// DataDir where the application will write its local state.
@@ -34,12 +34,13 @@ type Config struct {
 	// It should exist and be writable.
 	DataDir string
 
+	// ACME client configuration.
 	ACME ACME
 }
 
 // Site configures a particular site.
 type Site struct {
-	// IssuerCN that the certificate chain must end in
+	// IssuerCN that the certificate chain must end in.
 	IssuerCN string
 
 	// KeyType to use for this site. Should be "p256" or "rsa2048".
@@ -48,7 +49,7 @@ type Site struct {
 	// Profile selects the ACME profile to use for this certificate.
 	Profile string
 
-	// Domain names to use
+	// Domain names to use.
 	Domains Domains
 }
 
@@ -61,7 +62,7 @@ type Domains struct {
 
 // ACME client configuration, shared between all sites.
 type ACME struct {
-	// Directory URL
+	// Directory URL.
 	Directory string
 
 	// CACerts file used when connecting via TLS to the CA.
