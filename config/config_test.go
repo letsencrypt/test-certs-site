@@ -37,7 +37,7 @@ func TestLoadConfig(t *testing.T) {
 			CACerts:   "/testdata/pebble.crt",
 		},
 
-		DataDir: "/testdata/data_dir",
+		DataDir: "/testdata/data_dir/",
 	}
 
 	_, err := config.Load("non-existant.json")
