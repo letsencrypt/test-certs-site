@@ -1,1 +1,51 @@
-{}
+{
+  "sites": {
+    "valid.test": {
+      "status": "valid",
+      "rootCN": "minica root ca 5345e6",
+      "keyType": "p256",
+      "profile": "shortlived",
+      "files": {
+        "cert": "/testdata/test-certs-site/valid.crt",
+        "key": "/testdata/test-certs-site/valid.key"
+      },
+      "filesNext": {
+        "cert": "/testdata/test-certs-site/valid.next.crt",
+        "key": "/testdata/test-certs-site/valid.next.key"
+      }
+    },
+    "expired.test": {
+      "status": "expired",
+      "rootCN": "minica root ca 5345e6",
+      "keyType": "p256",
+      "profile": "shortlived",
+      "files": {
+        "cert": "/testdata/test-certs-site/expired.crt",
+        "key": "/testdata/test-certs-site/expired.key"
+      },
+      "filesNext": {
+        "cert": "/testdata/test-certs-site/expired.next.crt",
+        "key": "/testdata/test-certs-site/expired.next.key"
+      }
+    },
+    "revoked.test": {
+      "status": "revoked",
+      "rootCN": "minica root ca 5345e6",
+      "keyType": "p256",
+      "profile": "shortlived",
+      "files": {
+        "cert": "/testdata/test-certs-site/revoked.crt",
+        "key": "/testdata/test-certs-site/revoked.key"
+      },
+      "filesNext": {
+        "cert": "/testdata/test-certs-site/revoked.next.crt",
+        "key": "/testdata/test-certs-site/revoked.next.key"
+      }
+    }
+  },
+  "acme": {
+    "directory": "https://localhost:14000/dir",
+    "clientKey": "/testdata/test-certs-site/acme.key",
+    "caCerts": "/testdata/pebble.crt"
+  }
+}

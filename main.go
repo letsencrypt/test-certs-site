@@ -2,15 +2,13 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log/slog"
 	"os"
-)
 
-// Config is the structure of the JSON configuration file.
-type Config struct{}
+	"github.com/letsencrypt/test-certs-site/config"
+)
 
 func run(args []string) error {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
@@ -27,16 +25,9 @@ func run(args []string) error {
 		return fmt.Errorf("no config file specified")
 	}
 
-	cfgBytes, err := os.ReadFile(*cfgPath)
+	cfg, err := config.Load(*cfgPath)
 	if err != nil {
-		return fmt.Errorf("reading config file: %w", err)
-	}
-
-	var cfg Config
-
-	err = json.Unmarshal(cfgBytes, &cfg)
-	if err != nil {
-		return fmt.Errorf("parsing config file %s: %w", *cfgPath, err)
+		return fmt.Errorf("loading config: %w", err)
 	}
 
 	slog.Info("Loaded configuration! This program doesn't do anything yet.", slog.String("configFile", *cfgPath), slog.Any("config", cfg))
