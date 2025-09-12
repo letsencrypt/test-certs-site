@@ -52,6 +52,7 @@ type Site struct {
 	Domains Domains
 }
 
+// Domains that this demo site will serve
 type Domains struct {
 	Valid   string
 	Expired string
