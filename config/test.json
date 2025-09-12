@@ -1,1 +1,29 @@
-{}
+{
+  "sites": [
+    {
+      "issuerCN": "minica root ca 5345e6",
+      "keyType": "p256",
+      "profile": "shortlived",
+      "domains": {
+        "valid": "minica-valid.localhost",
+        "expired": "minica-expired.localhost",
+        "revoked": "minica-revoked.localhost"
+      }
+    },
+    {
+      "issuerCN": "Interesting Salad Root Greens",
+      "keyType": "rsa2048",
+      "profile": "tlsserver",
+      "domains": {
+        "valid": "valid.isrg.example.org",
+        "expired": "expired.isrg.example.org",
+        "revoked": "revoked.isrg.example.org"
+      }
+    }
+  ],
+  "acme": {
+    "directory": "https://localhost:14000/dir",
+    "caCerts": "/testdata/pebble.crt"
+  },
+  "dataDir": "/testdata/data_dir/"
+}
