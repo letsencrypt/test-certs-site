@@ -11,24 +11,26 @@ import (
 func TestLoadConfig(t *testing.T) {
 	t.Parallel()
 	expected := config.Config{
-		Sites: map[string]config.Site{
-			"valid.test": {
-				Status:  "valid",
+		Sites: []config.Site{
+			{
 				RootCN:  "minica root ca 5345e6",
 				KeyType: "p256",
 				Profile: "shortlived",
+				Domains: config.Domains{
+					Valid:   "minica-valid.localhost",
+					Expired: "minica-expired.localhost",
+					Revoked: "minica-revoked.localhost",
+				},
 			},
-			"expired.test": {
-				Status:  "expired",
-				RootCN:  "minica root ca 5345e6",
-				KeyType: "p256",
-				Profile: "shortlived",
-			},
-			"revoked.test": {
-				Status:  "revoked",
-				RootCN:  "minica root ca 5345e6",
-				KeyType: "p256",
-				Profile: "shortlived",
+			{
+				RootCN:  "Interesting Salad Root Greens",
+				KeyType: "rsa2048",
+				Profile: "tlsserver",
+				Domains: config.Domains{
+					Valid:   "valid.isrg.example.org",
+					Expired: "expired.isrg.example.org",
+					Revoked: "revoked.isrg.example.org",
+				},
 			},
 		},
 

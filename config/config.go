@@ -26,8 +26,8 @@ func Load(cfgPath string) (*Config, error) {
 
 // Config is the structure of the JSON configuration file.
 type Config struct {
-	// Sites is a map hostname to Site specific configuration.
-	Sites map[string]Site
+	// Sites is a list of sites to host
+	Sites []Site
 
 	// DataDir where the application will write its local state.
 	// This includes keys for certificates and ACME, as well as certificates.
@@ -39,9 +39,6 @@ type Config struct {
 
 // Site configures a particular site.
 type Site struct {
-	// Status for this site. Must be "valid", "expired", or "revoked".
-	Status string
-
 	// RootCN is the Common Name that this certificate must chain up to.
 	RootCN string
 
@@ -50,6 +47,15 @@ type Site struct {
 
 	// Profile selects the ACME profile to use for this certificate.
 	Profile string
+
+	// Domain names to use
+	Domains Domains
+}
+
+type Domains struct {
+	Valid   string
+	Expired string
+	Revoked string
 }
 
 // ACME client configuration, shared between all sites.
