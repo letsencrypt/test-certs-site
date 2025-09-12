@@ -1,29 +1,26 @@
-linters-settings:
-  gocyclo:
-    min-complexity: 25
-  govet:
-    check-shadowing: false
-  misspell:
-    locale: "US"
-
+version: "2"
 linters:
-  enable-all: true
+  default: all
   disable:
-    - stylecheck
-    - gosec
-    - dupl
     - depguard
-    - lll
-    - prealloc
-    - gocritic
-    - gochecknoinits
-    - gochecknoglobals
+    - err113
     - exhaustruct
-    - testpackage
-    - paralleltest
-    - nlreturn
+    - funlen
+    - lll
+    - musttag
     - perfsprint
-    # These are deprecated
-    - execinquery
-    - exportloopref
-    - gomnd
+    - testpackage
+    - varnamelen
+    - wsl
+    - wsl_v5
+  settings:
+    misspell:
+      locale: US
+  exclusions:
+    presets:
+      - std-error-handling
+formatters:
+  enable:
+    - gofmt
+    - gofumpt
+    - goimports
