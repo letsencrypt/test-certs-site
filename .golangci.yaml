@@ -16,6 +16,8 @@ linters:
   settings:
     misspell:
       locale: US
+    sloglint:
+      attr-only: true
   exclusions:
     presets:
       - std-error-handling
