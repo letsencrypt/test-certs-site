@@ -40,7 +40,7 @@ func run(args []string) error {
 	if err != nil {
 		return fmt.Errorf("loading temporary certificate: %w", err)
 	}
-	todoGetCert := func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+	todoGetCert := func(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
 		return &temporaryStaticCert, nil
 	}
 
