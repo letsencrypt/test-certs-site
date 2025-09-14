@@ -3,8 +3,17 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+)
+
+const (
+	// KeyTypeP256 is one of the valid key types in configuration.
+	KeyTypeP256 = "p256"
+
+	// KeyTypeRSA2048 is one of the valid key types in configuration.
+	KeyTypeRSA2048 = "rsa2048"
 )
 
 // Load a configuration file from cfgPath.
@@ -21,7 +30,41 @@ func Load(cfgPath string) (*Config, error) {
 		return nil, fmt.Errorf("parsing %s: %w", cfgPath, err)
 	}
 
+	err = validate(&cfg)
+	if err != nil {
+		return nil, fmt.Errorf("validating %s: %w", cfgPath, err)
+	}
+
 	return &cfg, nil
+}
+
+// validate the loaded configuration.
+// This checks domains are unique, key types are valid, and that an issuer CN is set.
+func validate(cfg *Config) error {
+	domains := make(map[string]struct{}, 0)
+	var errs []error
+	for i, site := range cfg.Sites {
+		switch site.KeyType {
+		case KeyTypeP256, KeyTypeRSA2048:
+			// Valid key types
+		default:
+			errs = append(errs, fmt.Errorf("site %d unsupported key type: %s", i, site.KeyType))
+		}
+
+		for _, d := range []string{site.Domains.Valid, site.Domains.Revoked, site.Domains.Expired} {
+			_, seen := domains[d]
+			if seen {
+				errs = append(errs, fmt.Errorf("site %d duplicate domain: %s", i, d))
+			}
+			domains[d] = struct{}{}
+		}
+
+		if site.IssuerCN == "" {
+			errs = append(errs, fmt.Errorf("site %d missing issuer CN", i))
+		}
+	}
+
+	return errors.Join(errs...)
 }
 
 // Config is the structure of the JSON configuration file.
@@ -47,6 +90,7 @@ type Site struct {
 	KeyType string
 
 	// Profile selects the ACME profile to use for this certificate.
+	// Optional.
 	Profile string
 
 	// Domain names to use.

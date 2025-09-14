@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/letsencrypt/test-certs-site/config"
@@ -54,5 +55,27 @@ func TestLoadConfig(t *testing.T) {
 
 	if !reflect.DeepEqual(cfg, &expected) {
 		t.Fatalf("got:\n%+q\nwant:\n%+q", cfg, &expected)
+	}
+}
+
+func TestInvalidConfig(t *testing.T) {
+	t.Parallel()
+	_, err := config.Load("invalid.json")
+	if err == nil {
+		t.Fatal("LoadConfig should have returned an error on invalid json")
+	}
+
+	errStr := err.Error()
+
+	for _, expected := range []string{
+		"site 0 missing issuer CN",
+		"site 0 duplicate domain: duplicate.domain",
+		"site 1 duplicate domain: valid.salad",
+		"site 0 unsupported key type: 3des",
+		"site 1 unsupported key type: ",
+	} {
+		if !strings.Contains(errStr, expected) {
+			t.Errorf("got error %q, want error containing %q", errStr, expected)
+		}
 	}
 }
