@@ -1,4 +1,6 @@
 {
+  "listenAddr": "localhost:8443",
+
   "sites": [
     {
       "issuerCN": "minica root ca 5345e6",

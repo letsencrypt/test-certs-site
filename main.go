@@ -2,12 +2,14 @@
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"log/slog"
 	"os"
 
 	"github.com/letsencrypt/test-certs-site/config"
+	"github.com/letsencrypt/test-certs-site/server"
 )
 
 func run(args []string) error {
@@ -30,9 +32,19 @@ func run(args []string) error {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
-	slog.Info("Loaded configuration! This program doesn't do anything yet.", slog.String("configFile", *cfgPath), slog.Any("config", cfg))
+	// This is just a temporary placeholder, using a single static test certificate
+	// This will normally be provided by the key storage part of this program
+	cert := os.Getenv("TEST_CERT")
+	key := os.Getenv("TEST_KEY")
+	temporaryStaticCert, err := tls.LoadX509KeyPair(cert, key)
+	if err != nil {
+		return fmt.Errorf("loading temporary certificate: %w", err)
+	}
+	todoGetCert := func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		return &temporaryStaticCert, nil
+	}
 
-	return nil
+	return server.Run(cfg.ListenAddr, todoGetCert)
 }
 
 func main() {
