@@ -12,6 +12,8 @@ import (
 func TestLoadConfig(t *testing.T) {
 	t.Parallel()
 	expected := config.Config{
+		ListenAddr: "localhost:8443",
+
 		Sites: []config.Site{
 			{
 				IssuerCN: "minica root ca 5345e6",

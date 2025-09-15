@@ -69,6 +69,9 @@ func validate(cfg *Config) error {
 
 // Config is the structure of the JSON configuration file.
 type Config struct {
+	// ListenAddr for the demo site to listen on. Eg, ":443".
+	ListenAddr string
+
 	// Sites is a list of sites to host.
 	Sites []Site
 
