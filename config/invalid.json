@@ -1,0 +1,20 @@
+{
+  "sites": [
+    {
+      "keyType": "3des",
+      "domains": {
+        "valid": "valid.salad",
+        "expired": "duplicate.domain",
+        "revoked": "duplicate.domain"
+      }
+    },
+    {
+      "issuerCN": "root",
+      "domains": {
+        "valid": "valid.salad",
+        "expired": "expired.salad",
+        "revoked": "revoked.salad"
+      }
+    }
+  ]
+}
