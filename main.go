@@ -3,7 +3,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -39,9 +38,7 @@ func run(args []string) error {
 		return err
 	}
 
-	return server.Run(cfg.ListenAddr, func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
-		return certManager.GetCertificate(info)
-	})
+	return server.Run(cfg.ListenAddr, certManager.GetCertificate)
 }
 
 func main() {
