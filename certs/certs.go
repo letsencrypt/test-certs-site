@@ -58,7 +58,7 @@ func New(_ context.Context, cfg *config.Config) (*CertManager, error) {
 	return &c, nil
 }
 
-// GetCertificate implements the interface required by the TL
+// GetCertificate implements the interface required by tls.Config
 func (c *CertManager) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	sni := info.ServerName
 
