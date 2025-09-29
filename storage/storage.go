@@ -46,7 +46,7 @@ func New(storageDir string) (*Storage, error) {
 	return &Storage{dir: storageDir}, nil
 }
 
-// NewKey generates a new "next" key. If there was a next certificate, it will be removed.
+// NewKey generates a new "next" key.
 func (s *Storage) NewKey(domain string, keyType string) (crypto.PrivateKey, error) {
 	var key crypto.PrivateKey
 	switch keyType {
