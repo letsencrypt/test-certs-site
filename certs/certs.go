@@ -42,15 +42,15 @@ func New(_ context.Context, cfg *config.Config) (*CertManager, error) {
 
 	for _, site := range cfg.Sites {
 		c.certs[site.Domains.Valid] = cert{
-			// TKTK: Set up the valid cert
+			// TODO: Set up the valid cert
 			it: &temporaryStaticCert,
 		}
 		c.certs[site.Domains.Revoked] = cert{
-			// TKTK: Set up the revoked cert
+			// TODO: Set up the revoked cert
 			it: &temporaryStaticCert,
 		}
 		c.certs[site.Domains.Expired] = cert{
-			// TKTK: Set up the expired cert
+			// TODO: Set up the expired cert
 			it: &temporaryStaticCert,
 		}
 	}

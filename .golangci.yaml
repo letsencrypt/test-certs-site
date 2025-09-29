@@ -7,6 +7,7 @@ linters:
     - exhaustruct
     - funlen
     - godot
+    - godox
     - lll
     - musttag
     - perfsprint
