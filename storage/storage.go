@@ -158,7 +158,7 @@ func (s *Storage) TakeNext(domain string) (tls.Certificate, error) {
 	return cert, nil
 }
 
-// ReadCurrent the cert and key for this domain.
+// ReadCurrent reads the current cert and key for this domain.
 // Returns an error if the stored value couldn't be read or parsed.
 func (s *Storage) ReadCurrent(domain string) (tls.Certificate, error) {
 	s.mu.Lock()
@@ -167,7 +167,7 @@ func (s *Storage) ReadCurrent(domain string) (tls.Certificate, error) {
 	return s.read(domain, current)
 }
 
-// ReadNext returns the next cert and key.
+// ReadNext reads the next cert and key for this domain.
 // Returns an error if the stored value couldn't be read or parsed.
 func (s *Storage) ReadNext(domain string) (tls.Certificate, error) {
 	s.mu.Lock()
