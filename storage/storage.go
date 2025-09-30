@@ -176,7 +176,7 @@ func (s *Storage) ReadNext(domain string) (tls.Certificate, error) {
 	return s.read(domain, next)
 }
 
-// read a keypair. Common logic for ReadCurrent and ReadNext. Caller should hold mu.
+// read a cert and key. Common logic for ReadCurrent and ReadNext. Caller should hold mu.
 func (s *Storage) read(domain string, ver version) (tls.Certificate, error) {
 	return tls.LoadX509KeyPair(s.pathFor(domain, ver, certificateFilename), s.pathFor(domain, ver, privateKeyFilename))
 }
