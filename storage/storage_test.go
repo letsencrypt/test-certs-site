@@ -27,7 +27,7 @@ func TestStorage(t *testing.T) {
 		if i%2 == 1 {
 			keyType = config.KeyTypeRSA2048
 		}
-		key, err := storage.NewKey(domain, keyType)
+		key, err := storage.StoreNextKey(domain, keyType)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -65,7 +65,7 @@ func TestStorage(t *testing.T) {
 }
 
 // testCert returns a test self-signed cert for the given key.
-func testCert(t *testing.T, domain string, key crypto.PrivateKey) [][]byte {
+func testCert(t *testing.T, domain string, key crypto.Signer) [][]byte {
 	t.Helper()
 
 	// Create a certificate template
@@ -73,15 +73,7 @@ func testCert(t *testing.T, domain string, key crypto.PrivateKey) [][]byte {
 		DNSNames: []string{domain},
 	}
 
-	type pub interface {
-		Public() crypto.PublicKey
-	}
-	p, ok := key.(pub)
-	if !ok {
-		t.Fatal("This won't happen, as all standard implementations of crypto.PrivateKey have a Public()")
-	}
-
-	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, p.Public(), key)
+	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, key.Public(), key)
 	if err != nil {
 		t.Fatalf("Failed to create certificate: %v", err)
 	}

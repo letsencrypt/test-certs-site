@@ -46,9 +46,9 @@ func New(storageDir string) (*Storage, error) {
 	return &Storage{dir: storageDir}, nil
 }
 
-// NewKey generates a new "next" key.
-func (s *Storage) NewKey(domain string, keyType string) (crypto.PrivateKey, error) {
-	var key crypto.PrivateKey
+// StoreNextKey generates a new "next" key, writing it to disk.
+func (s *Storage) StoreNextKey(domain string, keyType string) (crypto.Signer, error) {
+	var key crypto.Signer
 	switch keyType {
 	case config.KeyTypeP256:
 		p256Key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
