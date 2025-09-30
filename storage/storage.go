@@ -18,6 +18,13 @@ import (
 	"github.com/letsencrypt/test-certs-site/config"
 )
 
+type version string
+
+const (
+	next    version = "next"
+	current version = "current"
+)
+
 const (
 	privateKeyFilename  = "private.pem"
 	certificateFilename = "certificate.pem"
@@ -78,7 +85,7 @@ func (s *Storage) StoreNextKey(domain string, keyType string) (crypto.Signer, er
 		Bytes: keyBytes,
 	})
 
-	path := s.pathFor(domain, true, privateKeyFilename)
+	path := s.pathFor(domain, next, privateKeyFilename)
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -102,7 +109,7 @@ func (s *Storage) StoreNextCert(domain string, certificates [][]byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	certPath := s.pathFor(domain, true, certificateFilename)
+	certPath := s.pathFor(domain, next, certificateFilename)
 	cert, err := os.OpenFile(certPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, certPerms) //nolint:gosec // Arbitrary file is not a risk here
 	if err != nil {
 		return fmt.Errorf("could not open certificate file: %w", err)
@@ -122,56 +129,58 @@ func (s *Storage) StoreNextCert(domain string, certificates [][]byte) error {
 	return nil
 }
 
-// TakeNext overwrites the current cert/key with the next cert/key.
-func (s *Storage) TakeNext(domain string) error {
+// TakeNext overwrites the current cert/key with the next cert/key, and returns the new current values.
+func (s *Storage) TakeNext(domain string) (tls.Certificate, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	err := os.MkdirAll(s.pathFor(domain, false, ""), dirPerms)
+	err := os.MkdirAll(s.pathFor(domain, current, ""), dirPerms)
 	if err != nil {
-		return err
+		return tls.Certificate{}, err
+	}
+
+	// Read the next values we're about to make current.
+	// Doing this before renaming ensures the key and certificate match.
+	cert, err := s.read(domain, next)
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("reading next certificate: %w", err)
 	}
 
 	for _, path := range []string{privateKeyFilename, certificateFilename} {
-		nextPath := s.pathFor(domain, true, path)
-		currPath := s.pathFor(domain, false, path)
+		nextPath := s.pathFor(domain, next, path)
+		currPath := s.pathFor(domain, current, path)
 		err := os.Rename(nextPath, currPath)
 		if err != nil {
-			return err
+			return tls.Certificate{}, err
 		}
 	}
 
-	return nil
+	return cert, nil
 }
 
 // ReadCurrent the cert and key for this domain.
 // Returns an error if the stored value couldn't be read or parsed.
 func (s *Storage) ReadCurrent(domain string) (tls.Certificate, error) {
-	return s.read(domain, false)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.read(domain, current)
 }
 
 // ReadNext returns the next cert and key.
 // Returns an error if the stored value couldn't be read or parsed.
 func (s *Storage) ReadNext(domain string) (tls.Certificate, error) {
-	return s.read(domain, true)
-}
-
-// read a keypair. Common logic for ReadCurrent and ReadNext.
-func (s *Storage) read(domain string, next bool) (tls.Certificate, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	return tls.LoadX509KeyPair(s.pathFor(domain, next, certificateFilename), s.pathFor(domain, next, privateKeyFilename))
+	return s.read(domain, next)
 }
 
-func versionDir(next bool) string {
-	if next {
-		return "next"
-	}
-
-	return "current"
+// read a keypair. Common logic for ReadCurrent and ReadNext. Caller should hold mu.
+func (s *Storage) read(domain string, ver version) (tls.Certificate, error) {
+	return tls.LoadX509KeyPair(s.pathFor(domain, ver, certificateFilename), s.pathFor(domain, ver, privateKeyFilename))
 }
 
-func (s *Storage) pathFor(domain string, next bool, file string) string {
-	return filepath.Join(s.dir, domain, versionDir(next), file)
+func (s *Storage) pathFor(domain string, ver version, file string) string {
+	return filepath.Join(s.dir, domain, string(ver), file)
 }

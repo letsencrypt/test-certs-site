@@ -48,17 +48,17 @@ func TestStorage(t *testing.T) {
 		// A real user of the storage package would validate the certs here.
 		// Eg, checking if they're expired or revoked.
 
-		err = storage.TakeNext(domain)
+		_, err = storage.TakeNext(domain)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		keyPair, err := storage.ReadCurrent(domain)
+		current, err := storage.ReadCurrent(domain)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if keyPair.Leaf.DNSNames[0] != domain {
+		if current.Leaf.DNSNames[0] != domain {
 			t.Fatalf("Expected %s DNS SAN", domain)
 		}
 	}
