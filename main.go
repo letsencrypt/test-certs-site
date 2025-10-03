@@ -11,6 +11,7 @@ import (
 	"github.com/letsencrypt/test-certs-site/certs"
 	"github.com/letsencrypt/test-certs-site/config"
 	"github.com/letsencrypt/test-certs-site/server"
+	"github.com/letsencrypt/test-certs-site/storage"
 )
 
 func run(args []string) error {
@@ -33,7 +34,12 @@ func run(args []string) error {
 		return fmt.Errorf("loading config: %w", err)
 	}
 
-	certManager, err := certs.New(context.Background(), cfg)
+	store, err := storage.New(cfg.DataDir)
+	if err != nil {
+		return fmt.Errorf("creating storage: %w", err)
+	}
+
+	certManager, err := certs.New(context.Background(), cfg, store)
 	if err != nil {
 		return err
 	}
