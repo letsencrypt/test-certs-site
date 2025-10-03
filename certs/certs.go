@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/letsencrypt/test-certs-site/config"
+	"github.com/letsencrypt/test-certs-site/storage"
 )
 
 // CertManager manages the issued certificates
@@ -18,6 +19,9 @@ type CertManager struct {
 
 	// certs is a map of domain to a cert struct
 	certs map[string]cert
+
+	// storage provides persistent storage for certs
+	storage *storage.Storage
 }
 
 // cert holds an individual certificate
@@ -27,9 +31,10 @@ type cert struct {
 
 // New sets up the certs issuer.
 // This will register an ACME account if needed.
-func New(_ context.Context, cfg *config.Config) (*CertManager, error) {
+func New(_ context.Context, cfg *config.Config, store *storage.Storage) (*CertManager, error) {
 	c := CertManager{
-		certs: make(map[string]cert),
+		certs:   make(map[string]cert),
+		storage: store,
 	}
 
 	// This is just a temporary placeholder, using a single static test certificate
