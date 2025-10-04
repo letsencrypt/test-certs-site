@@ -27,5 +27,5 @@
     "directory": "https://localhost:14000/dir",
     "caCerts": "/testdata/pebble.crt"
   },
-  "dataDir": "/testdata/data_dir/"
+  "dataDir": "testdata/data_dir/"
 }
