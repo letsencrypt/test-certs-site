@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/letsencrypt/test-certs-site/config"
 	"github.com/letsencrypt/test-certs-site/storage"
@@ -87,7 +88,7 @@ func (c *CertManager) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificat
 	if isACME(info) {
 		challengeCert, ok := c.challengeCerts[sni]
 		if !ok {
-			return nil, fmt.Errorf("no challenge certificate found for %q", sni)
+			return nil, fmt.Errorf("no challenge certificate found for %s", sni)
 		}
 
 		return challengeCert, nil
@@ -96,6 +97,16 @@ func (c *CertManager) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificat
 	cert, ok := c.certs[info.ServerName]
 	if !ok {
 		return nil, fmt.Errorf("no certificate for %s", sni)
+	}
+
+	expired := time.Now().After(cert.it.Leaf.NotAfter)
+
+	if expired && !cert.shouldBeExpired {
+		return nil, fmt.Errorf("certificate for %s is expired", sni)
+	}
+
+	if !expired && cert.shouldBeExpired {
+		return nil, fmt.Errorf("certificate for %s is not expired, but should be", sni)
 	}
 
 	return cert.it, nil
