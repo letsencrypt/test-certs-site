@@ -39,15 +39,16 @@ type cert struct {
 
 // load tries to load a certificate, if one exists.
 // It logs if it fails.
-func load(store *storage.Storage, domain string, expired bool) cert {
+func load(store *storage.Storage, cm *CertManager, domain string, expired bool) {
 	curr, err := store.ReadCurrent(domain)
 	if err != nil {
 		slog.Info("No current certificate", slog.String("domain", domain), slog.String("error", err.Error()))
-
-		return cert{shouldBeExpired: expired}
 	}
 
-	return cert{it: &curr, shouldBeExpired: expired}
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	cm.certs[domain] = cert{it: &curr, shouldBeExpired: expired}
 }
 
 // New sets up the certs issuer.
@@ -61,9 +62,9 @@ func New(_ context.Context, cfg *config.Config, store *storage.Storage) (*CertMa
 
 	// Load "Current" certs for each domain, if they exist
 	for _, site := range cfg.Sites {
-		c.certs[site.Domains.Valid] = load(store, site.Domains.Valid, false)
-		c.certs[site.Domains.Revoked] = load(store, site.Domains.Revoked, false)
-		c.certs[site.Domains.Expired] = load(store, site.Domains.Expired, true)
+		load(store, &c, site.Domains.Valid, false)
+		load(store, &c, site.Domains.Revoked, false)
+		load(store, &c, site.Domains.Expired, true)
 	}
 
 	return &c, nil
