@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/letsencrypt/test-certs-site/config"
@@ -37,26 +36,15 @@ func New(_ context.Context, cfg *config.Config, store *storage.Storage) (*CertMa
 		storage: store,
 	}
 
-	// This is just a temporary placeholder, using a single static test certificate
-	certFile := os.Getenv("TEST_CERT")
-	keyFile := os.Getenv("TEST_KEY")
-	temporaryStaticCert, err := tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
-		return nil, fmt.Errorf("loading temporary certificate: %w", err)
-	}
-
 	for _, site := range cfg.Sites {
 		c.certs[site.Domains.Valid] = cert{
 			// TODO: Set up the valid cert
-			it: &temporaryStaticCert,
 		}
 		c.certs[site.Domains.Revoked] = cert{
 			// TODO: Set up the revoked cert
-			it: &temporaryStaticCert,
 		}
 		c.certs[site.Domains.Expired] = cert{
 			// TODO: Set up the expired cert
-			it: &temporaryStaticCert,
 		}
 	}
 
