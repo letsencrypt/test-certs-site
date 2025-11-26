@@ -72,7 +72,7 @@ func New(_ context.Context, cfg *config.Config, store *storage.Storage) (*CertMa
 // GetCertificate implements the interface required by tls.Config
 func (c *CertManager) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	sni := info.ServerName
-	isACME := len(info.SupportedProtos) == 1 && info.SupportedProtos[0] == "acme-tls/1"
+	isACME := len(info.SupportedProtos) == 1 && info.SupportedProtos[0] == tlsalpn01.ACMETLS1Protocol
 
 	c.mu.Lock()
 	defer c.mu.Unlock()

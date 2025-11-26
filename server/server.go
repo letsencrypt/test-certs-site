@@ -11,6 +11,8 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/go-acme/lego/v4/challenge/tlsalpn01"
 )
 
 // handle an http request with a placeholder response.
@@ -48,7 +50,7 @@ func Run(addr string, getCert GetCertificateFunc) error {
 		TLSConfig: &tls.Config{
 			GetCertificate: getCert,
 			MinVersion:     tls.VersionTLS13,
-			NextProtos:     []string{"acme-tls/1"},
+			NextProtos:     []string{tlsalpn01.ACMETLS1Protocol},
 		},
 	}
 

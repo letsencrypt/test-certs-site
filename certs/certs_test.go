@@ -7,6 +7,8 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/go-acme/lego/v4/challenge/tlsalpn01"
+
 	"github.com/letsencrypt/test-certs-site/config"
 	"github.com/letsencrypt/test-certs-site/storage"
 )
@@ -35,7 +37,7 @@ func TestACME(t *testing.T) {
 
 	clientHello := tls.ClientHelloInfo{
 		ServerName:      testDomain,
-		SupportedProtos: []string{"acme-tls/1"},
+		SupportedProtos: []string{tlsalpn01.ACMETLS1Protocol},
 	}
 
 	certificate, err := manager.GetCertificate(&clientHello)
