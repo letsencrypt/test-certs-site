@@ -10,6 +10,8 @@ import (
 
 	"github.com/letsencrypt/test-certs-site/config"
 	"github.com/letsencrypt/test-certs-site/storage"
+
+	"github.com/go-acme/lego/v4/challenge/tlsalpn01"
 )
 
 // CertManager manages the issued certificates
@@ -19,6 +21,9 @@ type CertManager struct {
 
 	// certs is a map of domain to a cert struct
 	certs map[string]cert
+
+	//challengeCerts is a map of domain to TLS-ALPN-01 challenge certs
+	challengeCerts map[string]*tls.Certificate
 
 	// storage provides persistent storage for certs
 	storage *storage.Storage
@@ -33,8 +38,9 @@ type cert struct {
 // This will register an ACME account if needed.
 func New(_ context.Context, cfg *config.Config, store *storage.Storage) (*CertManager, error) {
 	c := CertManager{
-		certs:   make(map[string]cert),
-		storage: store,
+		certs:          make(map[string]cert),
+		challengeCerts: make(map[string]*tls.Certificate),
+		storage:        store,
 	}
 
 	// This is just a temporary placeholder, using a single static test certificate
@@ -66,9 +72,18 @@ func New(_ context.Context, cfg *config.Config, store *storage.Storage) (*CertMa
 // GetCertificate implements the interface required by tls.Config
 func (c *CertManager) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	sni := info.ServerName
+	isACME := len(info.SupportedProtos) == 1 && info.SupportedProtos[0] == "acme-tls/1"
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
+	if isACME {
+		challengeCert, ok := c.challengeCerts[sni]
+		if !ok {
+			return nil, fmt.Errorf("no challenge certificate found for %q", sni)
+		}
+		return challengeCert, nil
+	}
 
 	cert, ok := c.certs[info.ServerName]
 	if !ok {
@@ -76,4 +91,31 @@ func (c *CertManager) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificat
 	}
 
 	return cert.it, nil
+}
+
+// Present is a method from the lego challenge.Provider interface.
+// It creates and stores a TLS-ALPN-01 challenge certificate.
+func (c *CertManager) Present(domain, token, keyAuth string) error {
+	challengeCert, err := tlsalpn01.ChallengeCert(domain, keyAuth)
+	if err != nil {
+		return fmt.Errorf("creating challenge certificate: %w", err)
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.challengeCerts[domain] = challengeCert
+
+	return nil
+}
+
+// CleanUp implements the lego challenge.Provider interface.
+// It removes the challenge certificate once it is no longer needed.
+func (c *CertManager) CleanUp(domain, token, keyAuth string) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	delete(c.challengeCerts, domain)
+
+	return nil
 }
