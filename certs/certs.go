@@ -20,6 +20,9 @@ type CertManager struct {
 	// certs is a map of domain to the certificate served
 	certs map[string]*tls.Certificate
 
+	// expired is a map of domain to whether the cert is expected to be expired
+	expired map[string]bool
+
 	// storage provides persistent storage for certs
 	storage *storage.Storage
 }
@@ -29,6 +32,7 @@ type CertManager struct {
 func New(_ context.Context, cfg *config.Config, store *storage.Storage) (*CertManager, error) {
 	c := &CertManager{
 		certs:   make(map[string]*tls.Certificate),
+		expired: make(map[string]bool),
 		storage: store,
 	}
 
@@ -38,16 +42,19 @@ func New(_ context.Context, cfg *config.Config, store *storage.Storage) (*CertMa
 		if err != nil {
 			slog.Info("No current valid certificate", slog.String("domain", site.Domains.Valid), slog.String("error", err.Error()))
 		}
+		c.expired[site.Domains.Valid] = false
 
 		err = c.LoadCertificate(site.Domains.Revoked)
 		if err != nil {
 			slog.Info("No current revoked certificate", slog.String("domain", site.Domains.Revoked), slog.String("error", err.Error()))
 		}
+		c.expired[site.Domains.Revoked] = false
 
 		err = c.LoadCertificate(site.Domains.Expired)
 		if err != nil {
 			slog.Info("No current expired certificate", slog.String("domain", site.Domains.Expired), slog.String("error", err.Error()))
 		}
+		c.expired[site.Domains.Expired] = true
 	}
 
 	return c, nil
