@@ -47,7 +47,8 @@ func Run(addr string, getCert GetCertificateFunc) error {
 
 		TLSConfig: &tls.Config{
 			GetCertificate: getCert,
-			MinVersion:     tls.VersionTLS12,
+			MinVersion:     tls.VersionTLS13,
+			NextProtos:     []string{"acme-tls/1"},
 		},
 	}
 
