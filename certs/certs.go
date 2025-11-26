@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/letsencrypt/test-certs-site/config"
@@ -31,6 +32,20 @@ type CertManager struct {
 // cert holds an individual certificate
 type cert struct {
 	it *tls.Certificate
+
+	// shouldBeExpired is true if this certificate is expected to be expired.
+	shouldBeExpired bool
+}
+
+// load tries to load a certificate, if one exists.
+// It logs if it fails.
+func load(store *storage.Storage, domain string, expired bool) cert {
+	curr, err := store.ReadCurrent(domain)
+	if err != nil {
+		slog.Info("No current certificate", slog.String("domain", domain), slog.String("error", err.Error()))
+		return cert{shouldBeExpired: expired}
+	}
+	return cert{it: &curr, shouldBeExpired: expired}
 }
 
 // New sets up the certs issuer.
@@ -42,16 +57,11 @@ func New(_ context.Context, cfg *config.Config, store *storage.Storage) (*CertMa
 		storage:        store,
 	}
 
+	// Load "Current" certs for each domain, if they exist
 	for _, site := range cfg.Sites {
-		c.certs[site.Domains.Valid] = cert{
-			// TODO: Set up the valid cert
-		}
-		c.certs[site.Domains.Revoked] = cert{
-			// TODO: Set up the revoked cert
-		}
-		c.certs[site.Domains.Expired] = cert{
-			// TODO: Set up the expired cert
-		}
+		c.certs[site.Domains.Valid] = load(store, site.Domains.Valid, false)
+		c.certs[site.Domains.Revoked] = load(store, site.Domains.Revoked, false)
+		c.certs[site.Domains.Expired] = load(store, site.Domains.Expired, true)
 	}
 
 	return &c, nil
