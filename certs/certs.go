@@ -17,48 +17,56 @@ type CertManager struct {
 	// mu protects certs
 	mu sync.Mutex
 
-	// certs is a map of domain to a cert struct
-	certs map[string]cert
+	// certs is a map of domain to the certificate served
+	certs map[string]*tls.Certificate
 
 	// storage provides persistent storage for certs
 	storage *storage.Storage
 }
 
-// cert holds an individual certificate
-type cert struct {
-	it *tls.Certificate
-
-	// shouldBeExpired is true if this certificate is expected to be expired.
-	shouldBeExpired bool
-}
-
-// load tries to load a certificate, if one exists.
-// It logs if it fails.
-func load(store *storage.Storage, domain string, expired bool) cert {
-	curr, err := store.ReadCurrent(domain)
-	if err != nil {
-		slog.Info("No current certificate", slog.String("domain", domain), slog.String("error", err.Error()))
-		return cert{shouldBeExpired: expired}
-	}
-	return cert{it: &curr, shouldBeExpired: expired}
-}
-
 // New sets up the certs issuer.
 // This will register an ACME account if needed.
 func New(_ context.Context, cfg *config.Config, store *storage.Storage) (*CertManager, error) {
-	c := CertManager{
-		certs:   make(map[string]cert),
+	c := &CertManager{
+		certs:   make(map[string]*tls.Certificate),
 		storage: store,
 	}
 
 	// Load "Current" certs for each domain, if they exist
 	for _, site := range cfg.Sites {
-		c.certs[site.Domains.Valid] = load(store, site.Domains.Valid, false)
-		c.certs[site.Domains.Revoked] = load(store, site.Domains.Revoked, false)
-		c.certs[site.Domains.Expired] = load(store, site.Domains.Expired, true)
+		err := c.LoadCertificate(site.Domains.Valid)
+		if err != nil {
+			slog.Info("No current valid certificate", slog.String("domain", site.Domains.Valid), slog.String("error", err.Error()))
+		}
+
+		err = c.LoadCertificate(site.Domains.Revoked)
+		if err != nil {
+			slog.Info("No current revoked certificate", slog.String("domain", site.Domains.Revoked), slog.String("error", err.Error()))
+		}
+
+		err = c.LoadCertificate(site.Domains.Expired)
+		if err != nil {
+			slog.Info("No current expired certificate", slog.String("domain", site.Domains.Expired), slog.String("error", err.Error()))
+		}
 	}
 
-	return &c, nil
+	return c, nil
+}
+
+// LoadCertificate will reload a certificate from storage.
+// Called at startup and by the ACME client when a new certificate is current.
+func (c *CertManager) LoadCertificate(domain string) error {
+	currCert, err := c.storage.ReadCurrent(domain)
+	if err != nil {
+		return err
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.certs[domain] = &currCert
+
+	return nil
 }
 
 // GetCertificate implements the interface required by tls.Config
@@ -73,5 +81,5 @@ func (c *CertManager) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificat
 		return nil, fmt.Errorf("no certificate for %s", sni)
 	}
 
-	return cert.it, nil
+	return cert, nil
 }
