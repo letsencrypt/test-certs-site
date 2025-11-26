@@ -12,6 +12,8 @@ import (
 )
 
 func TestACME(t *testing.T) {
+	t.Parallel()
+
 	store, err := storage.New(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
@@ -48,9 +50,9 @@ func TestACME(t *testing.T) {
 		t.Fatalf("Expected DNS name to be mytestsite.com, got %q", certificate.Leaf.DNSNames[0])
 	}
 
-	if -1 == slices.IndexFunc(certificate.Leaf.Extensions, func(ext pkix.Extension) bool {
+	if slices.IndexFunc(certificate.Leaf.Extensions, func(ext pkix.Extension) bool {
 		return ext.Id.Equal(asn1.ObjectIdentifier{1, 3, 6, 1, 5, 5, 7, 1, 31})
-	}) {
+	}) == -1 {
 		t.Fatalf("Didn't find ACME identifier")
 	}
 
@@ -63,6 +65,4 @@ func TestACME(t *testing.T) {
 	if err == nil {
 		t.Fatal("Expected error after cleanup, got none")
 	}
-
-	return
 }

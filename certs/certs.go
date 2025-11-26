@@ -22,7 +22,7 @@ type CertManager struct {
 	// certs is a map of domain to a cert struct
 	certs map[string]cert
 
-	//challengeCerts is a map of domain to TLS-ALPN-01 challenge certs
+	// challengeCerts is a map of domain to TLS-ALPN-01 challenge certs
 	challengeCerts map[string]*tls.Certificate
 
 	// storage provides persistent storage for certs
@@ -43,8 +43,10 @@ func load(store *storage.Storage, domain string, expired bool) cert {
 	curr, err := store.ReadCurrent(domain)
 	if err != nil {
 		slog.Info("No current certificate", slog.String("domain", domain), slog.String("error", err.Error()))
+
 		return cert{shouldBeExpired: expired}
 	}
+
 	return cert{it: &curr, shouldBeExpired: expired}
 }
 
@@ -80,6 +82,7 @@ func (c *CertManager) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificat
 		if !ok {
 			return nil, fmt.Errorf("no challenge certificate found for %q", sni)
 		}
+
 		return challengeCert, nil
 	}
 
@@ -93,7 +96,7 @@ func (c *CertManager) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificat
 
 // Present is a method from the lego challenge.Provider interface.
 // It creates and stores a TLS-ALPN-01 challenge certificate.
-func (c *CertManager) Present(domain, token, keyAuth string) error {
+func (c *CertManager) Present(domain, _, keyAuth string) error {
 	challengeCert, err := tlsalpn01.ChallengeCert(domain, keyAuth)
 	if err != nil {
 		return fmt.Errorf("creating challenge certificate: %w", err)
@@ -109,7 +112,7 @@ func (c *CertManager) Present(domain, token, keyAuth string) error {
 
 // CleanUp implements the lego challenge.Provider interface.
 // It removes the challenge certificate once it is no longer needed.
-func (c *CertManager) CleanUp(domain, token, keyAuth string) error {
+func (c *CertManager) CleanUp(domain, _, _ string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
