@@ -43,6 +43,7 @@ func load(store *storage.Storage, cm *CertManager, domain string, expired bool) 
 	curr, err := store.ReadCurrent(domain)
 	if err != nil {
 		slog.Info("No current certificate", slog.String("domain", domain), slog.String("error", err.Error()))
+		return
 	}
 
 	cm.mu.Lock()
