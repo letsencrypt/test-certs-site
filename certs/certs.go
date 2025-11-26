@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"github.com/letsencrypt/test-certs-site/config"
 	"github.com/letsencrypt/test-certs-site/storage"
@@ -86,6 +87,20 @@ func (c *CertManager) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificat
 	cert, ok := c.certs[info.ServerName]
 	if !ok {
 		return nil, fmt.Errorf("no certificate for %s", sni)
+	}
+
+	expired := time.Now().After(cert.Leaf.NotAfter)
+	shouldBe, ok := c.expired[info.ServerName]
+	if !ok {
+		return nil, fmt.Errorf("cert for %s not in c.expired", sni)
+	}
+
+	if expired && !shouldBe {
+		return nil, fmt.Errorf("certificate for %s is expired", sni)
+	}
+
+	if !expired && shouldBe {
+		return nil, fmt.Errorf("certificate for %s is not expired, but should be", sni)
 	}
 
 	return cert, nil
