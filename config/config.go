@@ -64,6 +64,14 @@ func validate(cfg *Config) error {
 		}
 	}
 
+	if cfg.ACME.Directory == "" {
+		errs = append(errs, fmt.Errorf("acme directory required"))
+	}
+
+	if !cfg.ACME.TermsOfServiceAgreed {
+		errs = append(errs, fmt.Errorf("review and agree to terms of service"))
+	}
+
 	return errors.Join(errs...)
 }
 
@@ -112,7 +120,6 @@ type ACME struct {
 	// Directory URL.
 	Directory string
 
-	// CACerts file used when connecting via TLS to the CA.
-	// Optional and typically only used in test environments.
-	CACerts string
+	// TermsOfServicesAgreed should be set after reviewing the CA's TOS.
+	TermsOfServiceAgreed bool
 }

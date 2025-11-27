@@ -2,8 +2,12 @@ package storage
 
 import (
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"errors"
+	"os"
 	"testing"
 
 	"github.com/letsencrypt/test-certs-site/config"
@@ -79,4 +83,44 @@ func testCert(t *testing.T, domain string, key crypto.Signer) [][]byte {
 	}
 
 	return [][]byte{certDER}
+}
+
+func TestAccountStorage(t *testing.T) {
+	t.Parallel()
+
+	storage, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dir := "https://acme-v100.api.banana/directory"
+
+	_, _, err = storage.ReadACME(dir)
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("Expected os.ErrNotExist, got %v", err)
+	}
+
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	uri := "https://acme-v100.api.banana/account/tomato"
+	err = storage.StoreACME(dir, uri, key)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	acct, signer, err := storage.ReadACME(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if acct != uri {
+		t.Fatalf("Expected %s URI, got %s", uri, acct)
+	}
+
+	if !key.PublicKey.Equal(signer.Public()) {
+		t.Fatalf("Reloaded key does not match")
+	}
 }

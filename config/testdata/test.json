@@ -25,7 +25,7 @@
   ],
   "acme": {
     "directory": "https://localhost:14000/dir",
-    "caCerts": "/testdata/pebble.crt"
+    "termsOfServiceAgreed": true
   },
   "dataDir": "testdata/data_dir/"
 }
