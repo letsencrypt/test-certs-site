@@ -62,7 +62,7 @@ type account struct {
 	// ACME Account URI
 	AccountURI string
 
-	// PKCS8 Private Key
+	// P256 Private Key
 	PrivateKey []byte
 }
 
