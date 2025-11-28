@@ -24,7 +24,7 @@ type info struct {
 }
 
 func newHandler(cfg *config.Config) handler {
-	domains := make(map[string]info, 3*len(cfg.Sites))
+	domains := make(map[string]info, 3*len(cfg.Sites)) //nolint:mnd // Capacity: 3 domains per site (valid, revoked, expired)
 
 	for _, site := range cfg.Sites {
 		domains[site.Domains.Valid] = info{
