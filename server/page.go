@@ -64,7 +64,7 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		// This shouldn't happen, but make sure we don't try to render a template if we don't have data for it.
 		w.WriteHeader(http.StatusNotFound)
-		slog.Warn("No info for domain", r.TLS.ServerName)
+		slog.Warn("No info for domain", slog.String("sni", r.TLS.ServerName))
 
 		return
 	}
