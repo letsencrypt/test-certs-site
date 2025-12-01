@@ -31,7 +31,7 @@ const (
 const (
 	privateKeyFilename  = "private.pem"
 	certificateFilename = "certificate.pem"
-	acmeAccount         = "acme.json"
+	acmeAccountFilename = "acme.json"
 )
 
 const (
@@ -73,7 +73,7 @@ func (s *Storage) ReadACME(directory string) (string, *ecdsa.PrivateKey, error) 
 		return "", nil, errors.New("no ACME directory specified")
 	}
 
-	file, err := os.Open(s.pathFor(url.PathEscape(directory), current, acmeAccount))
+	file, err := os.Open(s.pathFor(url.PathEscape(directory), current, acmeAccountFilename))
 	if err != nil {
 		return "", nil, err
 	}
@@ -111,7 +111,7 @@ func (s *Storage) StoreACME(directory string, accountURI string, key *ecdsa.Priv
 		return err
 	}
 
-	path := s.pathFor(url.PathEscape(directory), current, acmeAccount)
+	path := s.pathFor(url.PathEscape(directory), current, acmeAccountFilename)
 	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, certPerms) //nolint:gosec // Arbitrary file is not a risk here
 	if err != nil {
 		return err
