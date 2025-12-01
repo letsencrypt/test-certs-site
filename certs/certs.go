@@ -5,10 +5,11 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	"os"
+	"log/slog"
 	"sync"
 
 	"github.com/letsencrypt/test-certs-site/config"
+	"github.com/letsencrypt/test-certs-site/storage"
 )
 
 // CertManager manages the issued certificates
@@ -16,46 +17,56 @@ type CertManager struct {
 	// mu protects certs
 	mu sync.Mutex
 
-	// certs is a map of domain to a cert struct
-	certs map[string]cert
-}
+	// certs is a map of domain to the certificate served
+	certs map[string]*tls.Certificate
 
-// cert holds an individual certificate
-type cert struct {
-	it *tls.Certificate
+	// storage provides persistent storage for certs
+	storage *storage.Storage
 }
 
 // New sets up the certs issuer.
 // This will register an ACME account if needed.
-func New(_ context.Context, cfg *config.Config) (*CertManager, error) {
-	c := CertManager{
-		certs: make(map[string]cert),
+func New(_ context.Context, cfg *config.Config, store *storage.Storage) (*CertManager, error) {
+	c := &CertManager{
+		certs:   make(map[string]*tls.Certificate),
+		storage: store,
 	}
 
-	// This is just a temporary placeholder, using a single static test certificate
-	certFile := os.Getenv("TEST_CERT")
-	keyFile := os.Getenv("TEST_KEY")
-	temporaryStaticCert, err := tls.LoadX509KeyPair(certFile, keyFile)
-	if err != nil {
-		return nil, fmt.Errorf("loading temporary certificate: %w", err)
-	}
-
+	// Load "Current" certs for each domain, if they exist
 	for _, site := range cfg.Sites {
-		c.certs[site.Domains.Valid] = cert{
-			// TODO: Set up the valid cert
-			it: &temporaryStaticCert,
+		err := c.LoadCertificate(site.Domains.Valid)
+		if err != nil {
+			slog.Info("No current valid certificate", slog.String("domain", site.Domains.Valid), slog.String("error", err.Error()))
 		}
-		c.certs[site.Domains.Revoked] = cert{
-			// TODO: Set up the revoked cert
-			it: &temporaryStaticCert,
+
+		err = c.LoadCertificate(site.Domains.Revoked)
+		if err != nil {
+			slog.Info("No current revoked certificate", slog.String("domain", site.Domains.Revoked), slog.String("error", err.Error()))
 		}
-		c.certs[site.Domains.Expired] = cert{
-			// TODO: Set up the expired cert
-			it: &temporaryStaticCert,
+
+		err = c.LoadCertificate(site.Domains.Expired)
+		if err != nil {
+			slog.Info("No current expired certificate", slog.String("domain", site.Domains.Expired), slog.String("error", err.Error()))
 		}
 	}
 
-	return &c, nil
+	return c, nil
+}
+
+// LoadCertificate will reload a certificate from storage.
+// Called at startup and by the ACME client when a new certificate is current.
+func (c *CertManager) LoadCertificate(domain string) error {
+	currCert, err := c.storage.ReadCurrent(domain)
+	if err != nil {
+		return err
+	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	c.certs[domain] = &currCert
+
+	return nil
 }
 
 // GetCertificate implements the interface required by tls.Config
@@ -70,5 +81,5 @@ func (c *CertManager) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificat
 		return nil, fmt.Errorf("no certificate for %s", sni)
 	}
 
-	return cert.it, nil
+	return cert, nil
 }

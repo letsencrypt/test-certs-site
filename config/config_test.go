@@ -42,7 +42,7 @@ func TestLoadConfig(t *testing.T) {
 			CACerts:   "/testdata/pebble.crt",
 		},
 
-		DataDir: "/testdata/data_dir/",
+		DataDir: "testdata/data_dir/",
 	}
 
 	_, err := config.Load("non-existant.json")
@@ -50,7 +50,7 @@ func TestLoadConfig(t *testing.T) {
 		t.Fatal("LoadConfig should have returned an error on non-existant.json")
 	}
 
-	cfg, err := config.Load("test.json")
+	cfg, err := config.Load("testdata/test.json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestLoadConfig(t *testing.T) {
 
 func TestInvalidConfig(t *testing.T) {
 	t.Parallel()
-	_, err := config.Load("invalid.json")
+	_, err := config.Load("testdata/invalid.json")
 	if err == nil {
 		t.Fatal("LoadConfig should have returned an error on invalid json")
 	}
