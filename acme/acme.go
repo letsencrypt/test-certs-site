@@ -9,6 +9,7 @@ import (
 	"log/slog"
 
 	"github.com/go-acme/lego/v4/lego"
+	"github.com/go-acme/lego/v4/log"
 	"github.com/go-acme/lego/v4/registration"
 
 	"github.com/letsencrypt/test-certs-site/config"
@@ -42,6 +43,9 @@ func (u *legoUser) GetPrivateKey() crypto.PrivateKey {
 // New sets up the ACME client, registering it with the ACME server if one isn't present.
 func New(cfg *config.Config, store *storage.Storage) (*Client, error) {
 	var user legoUser
+
+	// Lego users can configure a custom logger by setting it in this global.
+	log.Logger = slogAdapter{}
 
 	// Try to load an existing ACME account
 	accountURI, acctKey, err := store.ReadACME(cfg.ACME.Directory)
