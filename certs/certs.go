@@ -101,10 +101,6 @@ func (c *CertManager) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificat
 	}
 
 	expired := time.Now().After(cert.Leaf.NotAfter)
-	if !ok {
-		return nil, fmt.Errorf("cert for %s not in c.expired", sni)
-	}
-
 	if expired && !cert.shouldBeExpired {
 		return nil, fmt.Errorf("certificate for %s is expired", sni)
 	}
