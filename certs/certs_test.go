@@ -49,16 +49,16 @@ func TestExpiredHandling(t *testing.T) {
 
 			cm := CertManager{
 				mu: sync.Mutex{},
-				certs: map[string]*tls.Certificate{
+				certs: map[string]*certificate{
 					tc.name: {
-						Leaf: &x509.Certificate{
-							NotAfter: tc.NotAfter,
-							DNSNames: []string{tc.name},
+						Certificate: &tls.Certificate{
+							Leaf: &x509.Certificate{
+								NotAfter: tc.NotAfter,
+								DNSNames: []string{tc.name},
+							},
 						},
+						shouldBeExpired: tc.shouldBeExpired,
 					},
-				},
-				expired: map[string]bool{
-					tc.name: tc.shouldBeExpired,
 				},
 			}
 

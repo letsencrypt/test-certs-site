@@ -13,16 +13,19 @@ import (
 	"github.com/letsencrypt/test-certs-site/storage"
 )
 
+type certificate struct {
+	*tls.Certificate
+
+	shouldBeExpired bool
+}
+
 // CertManager manages the issued certificates
 type CertManager struct {
 	// mu protects certs
 	mu sync.Mutex
 
 	// certs is a map of domain to the certificate served
-	certs map[string]*tls.Certificate
-
-	// expired is a map of domain to whether the cert is expected to be expired
-	expired map[string]bool
+	certs map[string]*certificate
 
 	// storage provides persistent storage for certs
 	storage *storage.Storage
@@ -32,30 +35,29 @@ type CertManager struct {
 // This will register an ACME account if needed.
 func New(_ context.Context, cfg *config.Config, store *storage.Storage) (*CertManager, error) {
 	c := &CertManager{
-		certs:   make(map[string]*tls.Certificate),
-		expired: make(map[string]bool),
+		certs:   make(map[string]*certificate),
 		storage: store,
 	}
 
 	// Load "Current" certs for each domain, if they exist
 	for _, site := range cfg.Sites {
+		c.certs[site.Domains.Valid] = &certificate{shouldBeExpired: false}
 		err := c.LoadCertificate(site.Domains.Valid)
 		if err != nil {
 			slog.Info("No current valid certificate", slog.String("domain", site.Domains.Valid), slog.String("error", err.Error()))
 		}
-		c.expired[site.Domains.Valid] = false
 
+		c.certs[site.Domains.Revoked] = &certificate{shouldBeExpired: false}
 		err = c.LoadCertificate(site.Domains.Revoked)
 		if err != nil {
 			slog.Info("No current revoked certificate", slog.String("domain", site.Domains.Revoked), slog.String("error", err.Error()))
 		}
-		c.expired[site.Domains.Revoked] = false
 
+		c.certs[site.Domains.Expired] = &certificate{shouldBeExpired: true}
 		err = c.LoadCertificate(site.Domains.Expired)
 		if err != nil {
 			slog.Info("No current expired certificate", slog.String("domain", site.Domains.Expired), slog.String("error", err.Error()))
 		}
-		c.expired[site.Domains.Expired] = true
 	}
 
 	return c, nil
@@ -72,7 +74,12 @@ func (c *CertManager) LoadCertificate(domain string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.certs[domain] = &currCert
+	cert, ok := c.certs[domain]
+	if !ok {
+		return fmt.Errorf("unknown site %s", domain)
+	}
+
+	cert.Certificate = &currCert
 
 	return nil
 }
@@ -86,22 +93,25 @@ func (c *CertManager) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificat
 
 	cert, ok := c.certs[info.ServerName]
 	if !ok {
+		return nil, fmt.Errorf("unknown site %s", sni)
+	}
+
+	if cert.Certificate == nil {
 		return nil, fmt.Errorf("no certificate for %s", sni)
 	}
 
 	expired := time.Now().After(cert.Leaf.NotAfter)
-	shouldBeExpired, ok := c.expired[info.ServerName]
 	if !ok {
 		return nil, fmt.Errorf("cert for %s not in c.expired", sni)
 	}
 
-	if expired && !shouldBeExpired {
+	if expired && !cert.shouldBeExpired {
 		return nil, fmt.Errorf("certificate for %s is expired", sni)
 	}
 
-	if !expired && shouldBeExpired {
+	if !expired && cert.shouldBeExpired {
 		return nil, fmt.Errorf("certificate for %s is not expired, but should be", sni)
 	}
 
-	return cert, nil
+	return cert.Certificate, nil
 }
