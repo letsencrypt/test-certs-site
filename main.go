@@ -52,7 +52,7 @@ func run(args []string) error {
 
 	go acmeClient.Run()
 
-	return server.Run(cfg.ListenAddr, certManager.GetCertificate)
+	return server.Run(cfg, certManager.GetCertificate)
 }
 
 func main() {
