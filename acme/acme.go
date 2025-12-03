@@ -45,7 +45,7 @@ func New(cfg *config.Config, store *storage.Storage) (*Client, error) {
 	var user legoUser
 
 	// Lego users can configure a custom logger by setting it in this global.
-	log.Logger = slogAdapter{}
+	log.Logger = slog.NewLogLogger(slog.Default().Handler(), slog.LevelInfo)
 
 	// Try to load an existing ACME account
 	accountURI, acctKey, err := store.ReadACME(cfg.ACME.Directory)
