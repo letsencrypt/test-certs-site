@@ -9,8 +9,11 @@ import (
 	"crypto/rsa"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
@@ -28,6 +31,7 @@ const (
 const (
 	privateKeyFilename  = "private.pem"
 	certificateFilename = "certificate.pem"
+	acmeAccountFilename = "acme.json"
 )
 
 const (
@@ -51,6 +55,69 @@ type Storage struct {
 // New storage handle.
 func New(storageDir string) (*Storage, error) {
 	return &Storage{dir: storageDir}, nil
+}
+
+// account is the stored JSON for an ACME account.
+type account struct {
+	// ACME Account URI
+	AccountURI string
+
+	// P256 Private Key
+	PrivateKey []byte
+}
+
+// ReadACME returns the stored ACME account for a given ACME server, identified by its directory URL.
+// If an account was previously saved, the account URI and its private key are returned.
+func (s *Storage) ReadACME(directory string) (string, *ecdsa.PrivateKey, error) {
+	if directory == "" {
+		return "", nil, errors.New("no ACME directory specified")
+	}
+
+	file, err := os.Open(s.pathFor(url.PathEscape(directory), current, acmeAccountFilename))
+	if err != nil {
+		return "", nil, err
+	}
+
+	defer file.Close()
+
+	var acct account
+	err = json.NewDecoder(file).Decode(&acct)
+	if err != nil {
+		return "", nil, fmt.Errorf("reading account json: %w", err)
+	}
+
+	key, err := x509.ParseECPrivateKey(acct.PrivateKey)
+	if err != nil {
+		return "", nil, fmt.Errorf("parsing account private key: %w", err)
+	}
+
+	return acct.AccountURI, key, nil
+}
+
+// StoreACME persists an account to disk, for later retrieval with ReadACME.
+func (s *Storage) StoreACME(directory string, accountURI string, key *ecdsa.PrivateKey) error {
+	keyBytes, err := x509.MarshalECPrivateKey(key)
+	if err != nil {
+		return err
+	}
+
+	acct := account{
+		AccountURI: accountURI,
+		PrivateKey: keyBytes,
+	}
+
+	err = os.MkdirAll(s.pathFor(url.PathEscape(directory), current, ""), dirPerms)
+	if err != nil {
+		return err
+	}
+
+	path := s.pathFor(url.PathEscape(directory), current, acmeAccountFilename)
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, certPerms) //nolint:gosec // Arbitrary file is not a risk here
+	if err != nil {
+		return err
+	}
+
+	return json.NewEncoder(file).Encode(acct)
 }
 
 // StoreNextKey generates a new "next" key, writing it to disk.

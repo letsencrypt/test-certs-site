@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/letsencrypt/test-certs-site/acme"
 	"github.com/letsencrypt/test-certs-site/certs"
 	"github.com/letsencrypt/test-certs-site/config"
 	"github.com/letsencrypt/test-certs-site/server"
@@ -43,6 +44,13 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
+
+	acmeClient, err := acme.New(cfg, store)
+	if err != nil {
+		return err
+	}
+
+	go acmeClient.Run()
 
 	return server.Run(cfg, certManager.GetCertificate)
 }

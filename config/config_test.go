@@ -38,8 +38,8 @@ func TestLoadConfig(t *testing.T) {
 		},
 
 		ACME: config.ACME{
-			Directory: "https://localhost:14000/dir",
-			CACerts:   "/testdata/pebble.crt",
+			Directory:            "https://localhost:14000/dir",
+			TermsOfServiceAgreed: true,
 		},
 
 		DataDir: "testdata/data_dir/",
@@ -56,7 +56,7 @@ func TestLoadConfig(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(cfg, &expected) {
-		t.Fatalf("got:\n%+q\nwant:\n%+q", cfg, &expected)
+		t.Fatalf("got:\n%v\nwant:\n%v", cfg, &expected)
 	}
 }
 
