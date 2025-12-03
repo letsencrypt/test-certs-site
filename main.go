@@ -44,7 +44,7 @@ func run(args []string) error {
 		return err
 	}
 
-	return server.Run(cfg.ListenAddr, certManager.GetCertificate)
+	return server.Run(cfg, certManager.GetCertificate)
 }
 
 func main() {
