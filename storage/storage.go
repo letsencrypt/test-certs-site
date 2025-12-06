@@ -171,26 +171,15 @@ func (s *Storage) StoreNextKey(domain string, keyType string) (crypto.Signer, er
 }
 
 // StoreNextCert stores the next certificate for the domain.
-// Certificates should be a sequence of DER certificates.
-func (s *Storage) StoreNextCert(domain string, certificates [][]byte) error {
+// Certificates should be a PEM sequence to write to disk
+func (s *Storage) StoreNextCert(domain string, certificates []byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	certPath := s.pathFor(domain, next, certificateFilename)
-	cert, err := os.OpenFile(certPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, certPerms) //nolint:gosec // Arbitrary file is not a risk here
+	err := os.WriteFile(certPath, certificates, certPerms)
 	if err != nil {
-		return fmt.Errorf("could not open certificate file: %w", err)
-	}
-	defer cert.Close()
-
-	for _, data := range certificates {
-		err := pem.Encode(cert, &pem.Block{
-			Type:  "CERTIFICATE",
-			Bytes: data,
-		})
-		if err != nil {
-			return fmt.Errorf("could not write certificate: %w", err)
-		}
+		return fmt.Errorf("could not write certificate: %w", err)
 	}
 
 	return nil
