@@ -342,7 +342,9 @@ func (i *issuer) issueNext() {
 	}
 
 	if i.shouldRevoke() {
-		err := i.client.Certificate.Revoke(resp.Certificate)
+		// Revoke with reason keyCompromise because browsers believe that one
+		reasonKeyCompromise := uint(0)
+		err := i.client.Certificate.RevokeWithReason(resp.Certificate, &reasonKeyCompromise)
 		if err != nil {
 			// TODO: if we failed to revoke, we should probably retry
 			// Give up and run from the top
