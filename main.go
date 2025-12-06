@@ -11,6 +11,7 @@ import (
 	"github.com/letsencrypt/test-certs-site/acme"
 	"github.com/letsencrypt/test-certs-site/certs"
 	"github.com/letsencrypt/test-certs-site/config"
+	"github.com/letsencrypt/test-certs-site/scheduler"
 	"github.com/letsencrypt/test-certs-site/server"
 	"github.com/letsencrypt/test-certs-site/storage"
 )
@@ -45,12 +46,13 @@ func run(args []string) error {
 		return err
 	}
 
-	acmeClient, err := acme.New(cfg, store)
+	schedule := scheduler.New()
+	defer schedule.Stop()
+
+	err = acme.New(cfg, store, schedule, certManager)
 	if err != nil {
 		return err
 	}
-
-	go acmeClient.Run()
 
 	return server.Run(cfg, certManager.GetCertificate)
 }
