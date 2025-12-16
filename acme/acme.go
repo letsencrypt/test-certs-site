@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"fmt"
 	"log/slog"
+	mathrand "math/rand/v2"
 	"time"
 
 	"github.com/go-acme/lego/v4/certificate"
@@ -102,53 +103,29 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 	}
 
 	for _, site := range cfg.Sites {
-		v := issuer{
-			checker: valid{},
+		for domain, chkr := range map[string]checker{
+			site.Domains.Valid:   valid{},
+			site.Domains.Revoked: revoked{},
+			site.Domains.Expired: expired{},
+		} {
+			i := issuer{
+				checker: chkr,
 
-			client:   client,
-			manager:  manager,
-			schedule: schedule,
-			store:    store,
-			logger:   slog.With(slog.String("domain", site.Domains.Valid)),
+				domain:   domain,
+				issuerCN: site.IssuerCN,
+				keyType:  site.KeyType,
+				profile:  site.Profile,
 
-			domain:   site.Domains.Valid,
-			issuerCN: site.IssuerCN,
-			keyType:  site.KeyType,
-			profile:  site.Profile,
+				client:   client,
+				logger:   slog.With(slog.String("domain", domain)),
+				manager:  manager,
+				schedule: schedule,
+				store:    store,
+			}
+
+			// Start each issuer within the next minute, but not all at once
+			schedule.RunIn(time.Duration(mathrand.Int64N(int64(time.Minute))), i.start)
 		}
-		schedule.RunIn(time.Second, v.start)
-
-		r := issuer{
-			checker: revoked{},
-
-			client:   client,
-			manager:  manager,
-			schedule: schedule,
-			store:    store,
-			logger:   slog.With(slog.String("domain", site.Domains.Revoked)),
-
-			domain:   site.Domains.Revoked,
-			issuerCN: site.IssuerCN,
-			keyType:  site.KeyType,
-			profile:  site.Profile,
-		}
-		schedule.RunIn(time.Second, r.start)
-
-		e := issuer{
-			checker: expired{},
-
-			client:   client,
-			manager:  manager,
-			schedule: schedule,
-			store:    store,
-
-			domain:   site.Domains.Expired,
-			issuerCN: site.IssuerCN,
-			keyType:  site.KeyType,
-			profile:  site.Profile,
-			logger:   slog.With(slog.String("domain", site.Domains.Expired)),
-		}
-		schedule.RunIn(time.Second, e.start)
 	}
 
 	return nil
@@ -157,16 +134,16 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 type issuer struct {
 	checker
 
-	client   *lego.Client
-	manager  *certs.CertManager
-	schedule *scheduler.Schedule
-	store    *storage.Storage
-	logger   *slog.Logger
-
 	domain   string
 	issuerCN string
 	keyType  string
 	profile  string
+
+	client   *lego.Client
+	logger   *slog.Logger
+	manager  *certs.CertManager
+	schedule *scheduler.Schedule
+	store    *storage.Storage
 }
 
 // checker is the interface used to handle the differences between (valid, revoked, expired) by the issue state machine.
