@@ -124,7 +124,8 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 			}
 
 			// Start each issuer within the next minute, but not all at once
-			schedule.RunIn(time.Duration(mathrand.Int64N(int64(time.Minute))), i.start)
+			delay := time.Duration(mathrand.Int64N(int64(time.Minute))) //nolint:gosec // Not security-sensitive
+			schedule.RunIn(delay, i.start)
 		}
 	}
 
