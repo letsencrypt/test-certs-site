@@ -101,7 +101,7 @@ func TestACME(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	manager, err := New(t.Context(), &config.Config{
+	manager, err := New(&config.Config{
 		Sites: nil,
 	}, store)
 	if err != nil {

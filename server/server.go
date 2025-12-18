@@ -6,9 +6,6 @@ import (
 	"crypto/tls"
 	"log/slog"
 	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/letsencrypt/test-certs-site/config"
@@ -19,8 +16,8 @@ import (
 // ACME TLS-ALPN-01 challenges.
 type GetCertificateFunc func(info *tls.ClientHelloInfo) (*tls.Certificate, error)
 
-// Run the server, until the process is signaled to exit.
-func Run(cfg *config.Config, getCert GetCertificateFunc) error {
+// Run the server, until ctx is cancelled
+func Run(ctx context.Context, cfg *config.Config, getCert GetCertificateFunc) error {
 	// We want http requests to time out relatively quickly, as this server shouldn't be doing much.
 	const timeout = 5 * time.Second
 
@@ -42,9 +39,7 @@ func Run(cfg *config.Config, getCert GetCertificateFunc) error {
 
 	// Wait for a signal to shut down the server.
 	go func() {
-		sigChan := make(chan os.Signal, 1)
-		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-		<-sigChan
+		<-ctx.Done()
 
 		err := srv.Shutdown(context.Background())
 		if err != nil {
