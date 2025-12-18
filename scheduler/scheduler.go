@@ -3,6 +3,7 @@ package scheduler
 
 import (
 	"container/heap"
+	"context"
 	"time"
 )
 
@@ -11,22 +12,21 @@ type job struct {
 	task func()
 }
 
-// Schedule is the main interface for the scheduler
+// Schedule is the main handle for the scheduler, returned from New()
 type Schedule struct {
 	incoming chan job
 	jobs     *jobHeap
-	done     chan struct{}
 }
 
 // New sets up a schedule and starts running it.
-func New() *Schedule {
+// The scheduler will stop running jobs once the context is canceled.
+func New(ctx context.Context) *Schedule {
 	s := &Schedule{
 		incoming: make(chan job),
 		jobs:     new(jobHeap),
-		done:     make(chan struct{}),
 	}
 
-	go s.loop()
+	go s.loop(ctx)
 
 	return s
 }
@@ -41,14 +41,8 @@ func (s *Schedule) RunIn(in time.Duration, task func()) {
 	s.RunAt(time.Now().Add(in), task)
 }
 
-// Stop running this schedule. No more jobs will run.
-func (s *Schedule) Stop() {
-	s.done <- struct{}{}
-	close(s.done)
-}
-
-// loop is run in a goroutine, scheduling and running jobs, until Stop is called.
-func (s *Schedule) loop() {
+// loop is run in a goroutine, scheduling and running jobs, until ctx is done.
+func (s *Schedule) loop(ctx context.Context) {
 	for {
 		var next <-chan time.Time
 		if len(*s.jobs) > 0 {
@@ -59,7 +53,7 @@ func (s *Schedule) loop() {
 			s.execute()
 		case j := <-s.incoming:
 			heap.Push(s.jobs, j)
-		case <-s.done:
+		case <-ctx.Done():
 			return
 		}
 	}

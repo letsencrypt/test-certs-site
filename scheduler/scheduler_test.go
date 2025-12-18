@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"context"
 	"slices"
 	"sync"
 	"testing"
@@ -14,7 +15,8 @@ func TestScheduler(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		t.Helper()
 
-		s := New()
+		ctx, cancel := context.WithCancel(t.Context())
+		s := New(ctx)
 
 		mu := sync.Mutex{}
 		var data []int64
@@ -32,7 +34,7 @@ func TestScheduler(t *testing.T) {
 		}
 
 		wg.Wait()
-		s.Stop()
+		cancel()
 
 		if !slices.Equal(data, []int64{-1, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}) {
 			t.Fatal("List was incorrect, so tasks didn't run in expected order", data)
