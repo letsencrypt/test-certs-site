@@ -1,0 +1,40 @@
+# {{.Domain}}
+
+## Test Web Page
+
+This test website, {{.Domain}}, is intended for
+testing compatibility with Let's Encrypt certificates.
+
+It is using a certificate issued by {{ .Info.IssuerCN }}.
+
+The certificate is {{ .Info.State }}.
+
+## More Information
+
+Find out more about Let's Encrypt at our homepage, https://letsencrypt.org/.
+
+Other test websites and information about our certificate hierarchies is
+available on our Chains of Trust documentation page:
+
+https://letsencrypt.org/certificates/               ##
+                                          ##        ##        ##
+                                           ##                ##
+                                                ##########
+                                               ###      ###
+ ###                   ###   ###        ####  ##          ##  ####
+ ###                   ###    ##              ##          ##
+ ###         ####    #######      #####     ##################
+ ###       ##   ###    ###       ###        ##################
+ ###       #########   ###         ####     ########  ########
+ ###       ##          ###           ###    ##################
+ #########  ######      ###      ######     ##################
+
+ #########                                                 ###
+ ###                                                       ###
+ ###       ########     #### ## #### ###     ### #######  #######
+ #######    ###  ###  ###     ###     ###   ###  ###  ###   ###
+ ###        ###  ### ###      ###      ### ###   ###   ###  ###
+ ###        ###  ###  ###     ###       ####     ###  ###   ###
+ ######### ####  ###    #### ####       ###      #######     ###
+                                       ###       ###
+                                      ###        ###
