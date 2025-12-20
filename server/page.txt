@@ -17,8 +17,9 @@ Other test websites and information about our certificate hierarchies is
 available on our Chains of Trust documentation page:
 
 https://letsencrypt.org/certificates/               ##
-                                          ##        ##        ##
-                                           ##                ##
+                                                    ##
+                                          ##                  ##
+                                           ##     ######     ##
                                                 ##########
                                                ###      ###
  ###                   ###   ###        ####  ##          ##  ####
