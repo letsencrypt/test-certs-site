@@ -76,9 +76,13 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	tmpl := h.textTemplate
+	contentType := "text/plain"
 	if strings.Contains(r.Header.Get("Accept"), "text/html") {
 		tmpl = h.htmlTemplate
+		contentType = "text/html"
 	}
+
+	w.Header().Set("Content-Type", contentType+"; charset=utf-8")
 
 	err := tmpl.Execute(w, templateData{
 		Domain: r.TLS.ServerName,
