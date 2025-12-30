@@ -50,7 +50,7 @@ func (revoked) checkReady(cert *x509.Certificate) (time.Time, error) {
 	}
 
 	// TODO: Actually check CRLs.
-	return cert.NotBefore.Add(time.Hour), nil
+	return time.Time{}, nil
 }
 
 func (revoked) checkRenew(cert *x509.Certificate) time.Time {

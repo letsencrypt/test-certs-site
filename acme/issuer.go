@@ -35,6 +35,8 @@ type issuer struct {
 func (i *issuer) start() {
 	var renewAt time.Time
 
+	i.logger.Info("starting issuance")
+
 	curr, err := i.store.ReadCurrent(i.domain)
 	if err != nil {
 		i.logger.Error("reading current certificate", slogErr(err))
@@ -63,32 +65,54 @@ func (i *issuer) issue() error {
 	// Check if there's a next certificate already in progress
 	next, err := i.store.ReadNext(i.domain)
 	if err != nil {
-		return i.issueNext()
+		i.logger.Info("couldn't read next certificate so issuing", slogErr(err))
+
+		err := i.issueNext()
+		if err != nil {
+			return err
+		}
+
+		return i.issue()
 	}
 
 	readyTime, err := i.checkReady(next.Leaf)
 	if err != nil {
-		return i.issueNext()
+		i.logger.Error("checking ready certificate", slogErr(err))
+
+		err := i.issueNext()
+		if err != nil {
+			return err
+		}
+
+		return i.issue()
 	}
 
 	if time.Now().After(readyTime) {
+		i.logger.Info("next certificate is ready")
 		// Next cert is ready! Take it.
 		_, err := i.store.TakeNext(i.domain)
 		if err != nil {
+			i.logger.Error("taking next certificate", slogErr(err))
 			// If this failed for some reason, reissue
 			return i.issueNext()
 		}
 		err = i.manager.LoadCertificate(i.domain)
 		if err != nil {
+			i.logger.Error("loading certificate", slogErr(err))
+
 			return i.issueNext()
 		}
 
 		i.logger.Info("certificate issuance completed")
 
+		// Jump back to start to schedule renewal
+		i.start()
+
 		return nil
 	}
 
 	// Re-check at readyTime
+	i.logger.Info("waiting for next certificate to be ready", slog.String("at", readyTime.Format(time.DateTime)))
 	i.schedule.RunAt(readyTime, i.start)
 
 	return nil
@@ -96,6 +120,7 @@ func (i *issuer) issue() error {
 
 // issueNext is called to actually issue the next certificate
 func (i *issuer) issueNext() error {
+	i.logger.Info("issuing new next certificate")
 	key, err := i.store.StoreNextKey(i.domain, i.keyType)
 	if err != nil {
 		return fmt.Errorf("could not store next key: %w", err)
@@ -126,7 +151,7 @@ func (i *issuer) issueNext() error {
 		return fmt.Errorf("could not store next certificate: %w", err)
 	}
 
-	i.logger.Info("certificate issued", slog.String("domain", i.domain))
+	i.logger.Info("next certificate issued", slog.String("domain", i.domain))
 
 	return nil
 }
