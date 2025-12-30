@@ -35,7 +35,7 @@ type issuer struct {
 func (i *issuer) start() {
 	var renewAt time.Time
 
-	i.logger.Info("starting issuance")
+	i.logger.Info("checking certificate")
 
 	curr, err := i.store.ReadCurrent(i.domain)
 	if err != nil {
