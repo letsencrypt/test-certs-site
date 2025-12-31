@@ -9,6 +9,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"testing"
@@ -98,35 +99,80 @@ func checkCert(serverName string, root []byte, insecure bool) (time.Time, error)
 	return resp.TLS.PeerCertificates[0].NotAfter, nil
 }
 
-func checkAll(root []byte) error {
+func checkAll(root []byte) (time.Time, time.Time, time.Time, error) {
 	valid, err := checkCert("valid.tsc", root, false)
 	if err != nil {
-		return fmt.Errorf("error checking valid certificate: %s", err)
+		return time.Time{}, time.Time{}, time.Time{}, fmt.Errorf("error checking valid certificate: %s", err)
 	}
 
 	if valid.Before(time.Now()) {
-		return fmt.Errorf("valid cert expired: %s", valid)
+		return time.Time{}, time.Time{}, time.Time{}, fmt.Errorf("valid cert expired: %s", valid)
 	}
 
 	revoked, err := checkCert("revoked.tsc", root, false)
 	if err != nil {
-		return fmt.Errorf("error checking revoked certificate: %s", err)
+		return time.Time{}, time.Time{}, time.Time{}, fmt.Errorf("error checking revoked certificate: %s", err)
 	}
 
 	if revoked.Before(time.Now()) {
-		return fmt.Errorf("revoked cert expired: %s", revoked)
+		return time.Time{}, time.Time{}, time.Time{}, fmt.Errorf("revoked cert expired: %s", revoked)
 	}
 
 	expired, err := checkCert("expired.tsc", root, true)
 	if err != nil {
-		return fmt.Errorf("error checking expired certificate: %s", err)
+		return time.Time{}, time.Time{}, time.Time{}, fmt.Errorf("error checking expired certificate: %s", err)
 	}
 
 	if expired.After(time.Now()) {
-		return fmt.Errorf("expired cert NOT expired: %s", expired)
+		return time.Time{}, time.Time{}, time.Time{}, fmt.Errorf("expired cert NOT expired: %s", expired)
 	}
 
-	return nil
+	return valid, revoked, expired, nil
+}
+
+// Wait for all the certs to be ready, which should happen once the "expired" cert expires
+func waitForAll(root []byte) error {
+	var err error
+	for _, sleep := range []time.Duration{0, time.Minute * 5, time.Second, time.Second, time.Minute, time.Minute} {
+		_, _, _, err = checkAll(root)
+		if err == nil {
+			return nil
+		}
+
+		slog.Info("not ready, sleeping", slog.Duration("sleep", sleep), slog.String("error", err.Error()))
+		time.Sleep(sleep)
+	}
+
+	return err
+}
+
+// Wait for all certificates to renew
+func waitRenew(root []byte) error {
+	valid, revoked, expired, err := checkAll(root)
+	if err != nil {
+		return err
+	}
+
+	for range 15 {
+		newValid, newRevoked, newExpired, err := checkAll(root)
+		if err != nil {
+			return err
+		}
+
+		if newValid.After(valid) && newRevoked.After(revoked) && newExpired.After(expired) {
+			slog.Info("All certificates renewed",
+				slog.Time("valid", newValid), slog.Time("revoked", newRevoked), slog.Time("expired", newExpired))
+
+			return nil
+		}
+
+		slog.Info("certs not renewed, sleeping", slog.Duration("sleep", time.Minute),
+			slog.Time("valid", newValid), slog.Time("revoked", newRevoked), slog.Time("expired", newExpired))
+
+		time.Sleep(time.Minute)
+	}
+
+	return fmt.Errorf("certificates not renewed after 15 minutes: %s %s %s", valid, revoked, expired)
 }
 
 // TestIntegration verifies that test-certs-site is working properly.
@@ -138,15 +184,13 @@ func TestPebbleIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Wait for all the certs to be ready, which should happen once the "expired" cert expires
-	for _, sleep := range []time.Duration{0, time.Minute * 5, time.Second, time.Second, time.Minute, time.Minute} {
-		err = checkAll(root)
-		if err == nil {
-			return
-		}
-
-		time.Sleep(sleep)
+	err = waitForAll(root)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	t.Fatal(err)
+	err = waitRenew(root)
+	if err != nil {
+		t.Fatal(err)
+	}
 }
