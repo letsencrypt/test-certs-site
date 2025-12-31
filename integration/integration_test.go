@@ -133,14 +133,14 @@ func checkAll(root []byte) (time.Time, time.Time, time.Time, error) {
 // Wait for all the certs to be ready, which should happen once the "expired" cert expires
 func waitForAll(root []byte) error {
 	var err error
-	for _, sleep := range []time.Duration{0, time.Minute * 5, time.Second, time.Second, time.Minute, time.Minute} {
+	for range 5 {
 		_, _, _, err = checkAll(root)
 		if err == nil {
 			return nil
 		}
 
-		slog.Info("not ready, sleeping", slog.Duration("sleep", sleep), slog.String("error", err.Error()))
-		time.Sleep(sleep)
+		slog.Info("not ready, sleeping", slog.Duration("sleep", time.Minute), slog.String("error", err.Error()))
+		time.Sleep(time.Minute)
 	}
 
 	return err
@@ -153,7 +153,7 @@ func waitRenew(root []byte) error {
 		return err
 	}
 
-	for range 15 {
+	for range 5 {
 		newValid, newRevoked, newExpired, err := checkAll(root)
 		if err != nil {
 			return err
@@ -172,7 +172,7 @@ func waitRenew(root []byte) error {
 		time.Sleep(time.Minute)
 	}
 
-	return fmt.Errorf("certificates not renewed after 15 minutes: %s %s %s", valid, revoked, expired)
+	return fmt.Errorf("certificates not renewed after 5 minutes: %s %s %s", valid, revoked, expired)
 }
 
 // TestIntegration verifies that test-certs-site is working properly.
