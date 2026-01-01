@@ -16,6 +16,8 @@ import (
 	"time"
 )
 
+const certLifetime = 30 * time.Second
+
 func httpClient(rootPEM []byte) *http.Client {
 	x509CertPool := x509.NewCertPool()
 	ok := x509CertPool.AppendCertsFromPEM(rootPEM)
@@ -132,18 +134,17 @@ func checkAll(root []byte) (time.Time, time.Time, time.Time, error) {
 
 // Wait for all the certs to be ready, which should happen once the "expired" cert expires
 func waitForAll(root []byte) error {
-	var err error
-	for range 5 {
-		_, _, _, err = checkAll(root)
+	for {
+		_, _, _, err := checkAll(root)
 		if err == nil {
+			slog.Info("all certificates ready")
+
 			return nil
 		}
 
-		slog.Info("not ready, sleeping", slog.Duration("sleep", time.Minute), slog.String("error", err.Error()))
-		time.Sleep(time.Minute)
+		slog.Info("not ready, sleeping", slog.Duration("sleep", certLifetime), slog.String("error", err.Error()))
+		time.Sleep(certLifetime)
 	}
-
-	return err
 }
 
 // Wait for all certificates to renew
@@ -153,7 +154,7 @@ func waitRenew(root []byte) error {
 		return err
 	}
 
-	for range 5 {
+	for {
 		newValid, newRevoked, newExpired, err := checkAll(root)
 		if err != nil {
 			return err
@@ -166,13 +167,11 @@ func waitRenew(root []byte) error {
 			return nil
 		}
 
-		slog.Info("certs not renewed, sleeping", slog.Duration("sleep", time.Minute),
+		slog.Info("certs not renewed, sleeping", slog.Duration("sleep", certLifetime),
 			slog.Time("valid", newValid), slog.Time("revoked", newRevoked), slog.Time("expired", newExpired))
 
-		time.Sleep(time.Minute)
+		time.Sleep(certLifetime)
 	}
-
-	return fmt.Errorf("certificates not renewed after 5 minutes: %s %s %s", valid, revoked, expired)
 }
 
 // TestIntegration verifies that test-certs-site is working properly.

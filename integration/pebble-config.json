@@ -10,7 +10,7 @@
     "profiles": {
       "supershort": {
         "description": "Super short profile for testing",
-        "validityPeriod": 60
+        "validityPeriod": 30
       }
     }
   }
