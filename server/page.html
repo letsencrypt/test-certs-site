@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta name="description" content="Website for compatibility testing.">
 
     <style>
         body {
@@ -55,6 +56,7 @@
 </head>
 <body>
 
+<main>
 <h1>{{.Domain}}</h1>
 
 <h2>Test Web Page</h2>
@@ -69,6 +71,7 @@
 <p>
     The certificate is {{ .Info.State }}.
 </p>
+</main>
 
 <h2>More Information</h2>
 <p>
@@ -80,7 +83,7 @@
 </p>
 
 <a href="https://letsencrypt.org">
-    <img alt="Let's Encrypt Logo" class="lock" src="https://letsencrypt.org/images/letsencrypt-logo-horizontal.svg"/>
+    <img alt="Let's Encrypt Logo" class="lock" src="https://letsencrypt.org/images/letsencrypt-logo-horizontal.svg">
 </a>
 
 </body>
