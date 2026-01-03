@@ -58,6 +58,23 @@ type templateData struct {
 	Info   info
 }
 
+// getTmpl returns the correct template based on the URL query, and HTTP Accept header
+func (h handler) getTmpl(query, acceptHeader string) (*template.Template, string) {
+	if query == "txt" {
+		return h.textTemplate, "text/plain"
+	}
+
+	if query == "html" {
+		return h.htmlTemplate, "text/html"
+	}
+
+	if strings.Contains(acceptHeader, "text/html") {
+		return h.htmlTemplate, "text/html"
+	}
+
+	return h.textTemplate, "text/plain"
+}
+
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet || r.URL.Path != "/" {
 		w.WriteHeader(http.StatusNotFound)
@@ -75,12 +92,7 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl := h.textTemplate
-	contentType := "text/plain"
-	if strings.Contains(r.Header.Get("Accept"), "text/html") {
-		tmpl = h.htmlTemplate
-		contentType = "text/html"
-	}
+	tmpl, contentType := h.getTmpl(r.URL.RawQuery, "txt")
 
 	w.Header().Set("Content-Type", contentType+"; charset=utf-8")
 
