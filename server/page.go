@@ -75,7 +75,7 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl, contentType := h.getTmpl(r.URL.RawQuery, "txt")
+	tmpl, contentType := h.getTmpl(r.URL.RawQuery, r.Header.Get("Accept"))
 
 	w.Header().Set("Content-Type", contentType+"; charset=utf-8")
 
