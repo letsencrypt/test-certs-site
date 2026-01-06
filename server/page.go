@@ -6,16 +6,21 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/letsencrypt/test-certs-site/config"
 )
 
 //go:embed page.html
-var pageTemplate string
+var htmlTemplate string
+
+//go:embed page.txt
+var textTemplate string
 
 type handler struct {
-	template *template.Template
-	domains  map[string]info
+	htmlTemplate *template.Template
+	textTemplate *template.Template
+	domains      map[string]info
 }
 
 type info struct {
@@ -42,8 +47,9 @@ func newHandler(cfg *config.Config) handler {
 	}
 
 	return handler{
-		template: template.Must(template.New("homePage").Parse(pageTemplate)),
-		domains:  domains,
+		htmlTemplate: template.Must(template.New("homePage").Parse(htmlTemplate)),
+		textTemplate: template.Must(template.New("homePage").Parse(textTemplate)),
+		domains:      domains,
 	}
 }
 
@@ -69,7 +75,11 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := h.template.Execute(w, templateData{
+	tmpl, contentType := h.getTmpl(r.URL.RawQuery, r.Header.Get("Accept"))
+
+	w.Header().Set("Content-Type", contentType+"; charset=utf-8")
+
+	err := tmpl.Execute(w, templateData{
 		Domain: r.TLS.ServerName,
 		Info:   info,
 	})
@@ -79,4 +89,21 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			slog.String("sni", r.TLS.ServerName),
 			slog.String("error", err.Error()))
 	}
+}
+
+// getTmpl returns the correct template based on the URL query, and HTTP Accept header
+func (h handler) getTmpl(query, acceptHeader string) (*template.Template, string) {
+	if query == "txt" {
+		return h.textTemplate, "text/plain"
+	}
+
+	if query == "html" {
+		return h.htmlTemplate, "text/html"
+	}
+
+	if strings.Contains(acceptHeader, "text/html") {
+		return h.htmlTemplate, "text/html"
+	}
+
+	return h.textTemplate, "text/plain"
 }

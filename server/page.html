@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <meta name="description" content="Website for compatibility testing.">
 
     <style>
         body {
@@ -17,12 +18,9 @@
         }
 
         a {
-            color: #2a7ae2;
+            color: #2C3C69;
             text-decoration: none;
-        }
-
-        a:visited {
-            color: #1756a9;
+            font-weight: bold;
         }
 
         a:hover, a:focus-visible {
@@ -55,28 +53,34 @@
 </head>
 <body>
 
+<main>
 <h1>{{.Domain}}</h1>
 
 <h2>Test Web Page</h2>
 <p>
-    This test web site, {{ .Domain }}, is intended for testing compatibility with Let's Encrypt certificates.
+    This test website, {{ .Domain }}, is intended for testing compatibility with Let's Encrypt certificates.
 </p>
 
 <p>
-    It is using a certificate issued by <code>{{ .Info.IssuerCN }}</code> which is {{ .Info.State }}.
+    It is using a certificate issued by <code>{{ .Info.IssuerCN }}</code>.
 </p>
+
+<p>
+    The certificate is {{ .Info.State }}.
+</p>
+</main>
 
 <h2>More Information</h2>
 <p>
     Find out more about Let's Encrypt at our homepage, <a href="https://letsencrypt.org/">letsencrypt.org</a>.
 </p>
 <p>
-    Other test web sites and information about our certificate hierarchies is available on our
+    Other test websites and information about our certificate hierarchies is available on our
     <a href="https://letsencrypt.org/certificates/">Chains of Trust</a> documentation page.
 </p>
 
 <a href="https://letsencrypt.org">
-    <img alt="Let's Encrypt Logo" class="lock" src="https://letsencrypt.org/images/letsencrypt-logo-horizontal.svg"/>
+    <img alt="Let's Encrypt Logo" class="lock" src="https://letsencrypt.org/images/letsencrypt-logo-horizontal.svg">
 </a>
 
 </body>
