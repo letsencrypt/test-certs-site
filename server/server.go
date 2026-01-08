@@ -35,7 +35,7 @@ func Run(cfg *config.Config, getCert GetCertificateFunc) error {
 
 		TLSConfig: &tls.Config{
 			GetCertificate: getCert,
-			MinVersion:     tls.VersionTLS13,
+			MinVersion:     tls.VersionTLS10,
 			NextProtos:     []string{"acme-tls/1"},
 		},
 	}
