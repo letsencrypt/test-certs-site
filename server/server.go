@@ -33,9 +33,10 @@ func Run(cfg *config.Config, getCert GetCertificateFunc) error {
 		ReadTimeout:       timeout,
 		WriteTimeout:      timeout,
 
+		//nolint:gosec // This is an explicit TLS test site, so allow TLS1.0
 		TLSConfig: &tls.Config{
 			GetCertificate: getCert,
-			MinVersion:     tls.VersionTLS13,
+			MinVersion:     tls.VersionTLS10,
 			NextProtos:     []string{"acme-tls/1"},
 		},
 	}
