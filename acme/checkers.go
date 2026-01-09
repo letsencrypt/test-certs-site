@@ -47,7 +47,7 @@ func randTime(start, end time.Time) time.Time {
 		return start
 	}
 
-	return start.Add(time.Duration(mathrand.Int64N(window)))
+	return start.Add(time.Duration(mathrand.Int64N(window))) //nolint:gosec // math/rand is safe here
 }
 
 func (vc *valid) checkRenew(cert *x509.Certificate) time.Time {
@@ -68,15 +68,17 @@ func (vc *valid) checkRenew(cert *x509.Certificate) time.Time {
 	}
 
 	retry := time.Now().Add(resp.RetryAfter)
-	renew := randTime(resp.RenewalInfoResponse.SuggestedWindow.Start, resp.RenewalInfoResponse.SuggestedWindow.End)
+	renew := randTime(resp.SuggestedWindow.Start, resp.SuggestedWindow.End)
 
 	if renew.After(retry) {
 		// If the renewal time is after RetryAfter, recheck then
 		vc.logger.Info("ARI retry", slog.Time("at", retry))
+
 		return retry
 	}
 
 	vc.logger.Info("ARI renewal", slog.Time("at", renew))
+
 	return renew
 }
 

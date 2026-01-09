@@ -81,7 +81,7 @@ func (i *issuer) issue() error {
 
 		// checkReady can return an error if the current "next" cert is broken (eg, expired)
 		// and so we need to issue a new one and start over.
-		next, err = i.issueNext()
+		_, err = i.issueNext()
 		if err != nil {
 			return err
 		}
