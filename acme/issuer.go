@@ -3,6 +3,7 @@ package acme
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"log/slog"
 	"time"
@@ -15,8 +16,22 @@ import (
 	"github.com/letsencrypt/test-certs-site/storage"
 )
 
-func slogErr(err error) slog.Attr {
-	return slog.String("error", err.Error())
+// checker is the interface used to handle the differences between (valid, revoked, expired) by the issue state machine.
+type checker interface {
+	// checkReady returns if a certificate is ready.
+	// It returns a time to wait with a nil error if we should wait and re-check.
+	// If that time has already passed, then the cert is ready to go.
+	// It returns an error if we should throw out this cert.
+	// Checks CRLs for revoked certs.
+	checkReady(ctx context.Context, cert *x509.Certificate) (time.Time, error)
+
+	// checkRenew returns when we should renew it.
+	// Checks ARI for valid certs.
+	checkRenew(ctx context.Context, cert *x509.Certificate) time.Time
+
+	// shouldRevoke returns true if this certificate should be revoked.
+	// Returns true for revoked certs, and false otherwise.
+	shouldRevoke() bool
 }
 
 type issuer struct {
@@ -164,4 +179,8 @@ func (i *issuer) takeNext() error {
 	}
 
 	return nil
+}
+
+func slogErr(err error) slog.Attr {
+	return slog.String("error", err.Error())
 }
