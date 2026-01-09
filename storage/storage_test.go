@@ -6,6 +6,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/pem"
 	"errors"
 	"os"
 	"testing"
@@ -69,7 +70,7 @@ func TestStorage(t *testing.T) {
 }
 
 // testCert returns a test self-signed cert for the given key.
-func testCert(t *testing.T, domain string, key crypto.Signer) [][]byte {
+func testCert(t *testing.T, domain string, key crypto.Signer) []byte {
 	t.Helper()
 
 	// Create a certificate template
@@ -82,7 +83,10 @@ func testCert(t *testing.T, domain string, key crypto.Signer) [][]byte {
 		t.Fatalf("Failed to create certificate: %v", err)
 	}
 
-	return [][]byte{certDER}
+	return pem.EncodeToMemory(&pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: certDER,
+	})
 }
 
 func TestAccountStorage(t *testing.T) {
