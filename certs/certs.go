@@ -2,7 +2,6 @@
 package certs
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"log/slog"
@@ -33,9 +32,8 @@ type CertManager struct {
 	storage *storage.Storage
 }
 
-// New sets up the certs issuer.
-// This will register an ACME account if needed.
-func New(_ context.Context, cfg *config.Config, store *storage.Storage) (*CertManager, error) {
+// New sets up the certificate manager, holding current certs.
+func New(cfg *config.Config, store *storage.Storage) (*CertManager, error) {
 	c := &CertManager{
 		certs:          make(map[string]*tls.Certificate),
 		challengeCerts: make(map[string]*tls.Certificate),

@@ -7,10 +7,13 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/letsencrypt/test-certs-site/acme"
 	"github.com/letsencrypt/test-certs-site/certs"
 	"github.com/letsencrypt/test-certs-site/config"
+	"github.com/letsencrypt/test-certs-site/scheduler"
 	"github.com/letsencrypt/test-certs-site/server"
 	"github.com/letsencrypt/test-certs-site/storage"
 )
@@ -40,19 +43,22 @@ func run(args []string) error {
 		return fmt.Errorf("creating storage: %w", err)
 	}
 
-	certManager, err := certs.New(context.Background(), cfg, store)
+	certManager, err := certs.New(cfg, store)
 	if err != nil {
 		return err
 	}
 
-	acmeClient, err := acme.New(cfg, store)
+	// When this context is canceled, the scheduler running jobs and the server will exit
+	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
+
+	schedule := scheduler.New(ctx)
+
+	err = acme.New(cfg, store, schedule, certManager)
 	if err != nil {
 		return err
 	}
 
-	go acmeClient.Run()
-
-	return server.Run(cfg, certManager.GetCertificate)
+	return server.Run(ctx, cfg, certManager.GetCertificate)
 }
 
 func main() {

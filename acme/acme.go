@@ -7,20 +7,18 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"log/slog"
+	mathrand "math/rand/v2"
+	"time"
 
 	"github.com/go-acme/lego/v4/lego"
 	"github.com/go-acme/lego/v4/log"
 	"github.com/go-acme/lego/v4/registration"
 
+	"github.com/letsencrypt/test-certs-site/certs"
 	"github.com/letsencrypt/test-certs-site/config"
+	"github.com/letsencrypt/test-certs-site/scheduler"
 	"github.com/letsencrypt/test-certs-site/storage"
 )
-
-// Client is the main handle for this package, returned from New()
-type Client struct {
-	store  *storage.Storage
-	client *lego.Client
-}
 
 // legoUser implements lego's registration.User interface.
 type legoUser struct {
@@ -41,7 +39,7 @@ func (u *legoUser) GetPrivateKey() crypto.PrivateKey {
 }
 
 // New sets up the ACME client, registering it with the ACME server if one isn't present.
-func New(cfg *config.Config, store *storage.Storage) (*Client, error) {
+func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedule, manager *certs.CertManager) error {
 	var user legoUser
 
 	// Lego users can configure a custom logger by setting it in this global.
@@ -53,7 +51,7 @@ func New(cfg *config.Config, store *storage.Storage) (*Client, error) {
 		// No account, need to make a new one
 		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		user.key = key
 	} else {
@@ -72,7 +70,7 @@ func New(cfg *config.Config, store *storage.Storage) (*Client, error) {
 
 	client, err := lego.NewClient(legoCfg)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Register if needed
@@ -81,25 +79,31 @@ func New(cfg *config.Config, store *storage.Storage) (*Client, error) {
 			TermsOfServiceAgreed: cfg.ACME.TermsOfServiceAgreed,
 		})
 		if err != nil {
-			return nil, err
+			return err
 		}
 		user.reg = reg
 
 		err = store.StoreACME(cfg.ACME.Directory, reg.URI, user.key)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		slog.Info("Created new ACME account", slog.String("directory", cfg.ACME.Directory), slog.String("User", user.reg.URI))
 	}
 
-	ac := &Client{
-		store:  store,
-		client: client,
+	for _, site := range cfg.Sites {
+		// This is just a placeholder in this PR; a subsequent PR will kick off issuance for each
+		for _, domain := range []string{
+			site.Domains.Valid,
+			site.Domains.Revoked,
+			site.Domains.Expired,
+		} {
+			// Start each issuer within the next minute, but not all at once
+			delay := time.Duration(mathrand.Int64N(int64(time.Minute))) //nolint:gosec // Not security-sensitive use
+			schedule.RunIn(delay, func() {
+				slog.Info("Starting Issuance", slog.String("domain", domain))
+			})
+		}
 	}
 
-	return ac, nil
-}
-
-// Run will be executed in a background goroutine, issuing or renewing certificates as required.
-func (ac *Client) Run() {
+	return client.Challenge.SetTLSALPN01Provider(manager)
 }
