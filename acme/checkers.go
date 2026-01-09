@@ -2,8 +2,15 @@ package acme
 
 import (
 	"crypto/x509"
+	"errors"
 	"fmt"
+	"log/slog"
+	mathrand "math/rand/v2"
 	"time"
+
+	"github.com/go-acme/lego/v4/acme/api"
+	"github.com/go-acme/lego/v4/certificate"
+	"github.com/go-acme/lego/v4/lego"
 )
 
 // checker is the interface used to handle the differences between (valid, revoked, expired) by the issue state machine.
@@ -20,9 +27,12 @@ type checker interface {
 	shouldRevoke() bool
 }
 
-type valid struct{}
+type valid struct {
+	client *lego.Client
+	logger *slog.Logger
+}
 
-func (valid) checkReady(cert *x509.Certificate) (time.Time, error) {
+func (vc *valid) checkReady(cert *x509.Certificate) (time.Time, error) {
 	if time.Now().After(cert.NotAfter) {
 		return time.Time{}, fmt.Errorf("certificate expired: %s", cert.NotAfter.Format(time.DateTime))
 	}
@@ -30,15 +40,47 @@ func (valid) checkReady(cert *x509.Certificate) (time.Time, error) {
 	return time.Time{}, nil
 }
 
-func (valid) checkRenew(cert *x509.Certificate) time.Time {
-	// TODO: Use ARI, recheck daily
-	// Renew at 50% lifetime
-	lifetime := cert.NotAfter.Sub(cert.NotBefore)
+func randTime(start, end time.Time) time.Time {
+	window := int64(end.Sub(start))
+	if window <= 0 {
+		// If start == end, we'll get a 0 duration, which we can't pass to mathrand.Int64N
+		return start
+	}
 
-	return cert.NotBefore.Add(lifetime / 2) //nolint:mnd
+	return start.Add(time.Duration(mathrand.Int64N(window)))
 }
 
-func (valid) shouldRevoke() bool {
+func (vc *valid) checkRenew(cert *x509.Certificate) time.Time {
+	resp, err := vc.client.Certificate.GetRenewalInfo(certificate.RenewalInfoRequest{
+		Cert: cert,
+	})
+	if errors.Is(err, api.ErrNoARI) {
+		// without ARI, renew at 50% lifetime
+		lifetime := cert.NotAfter.Sub(cert.NotBefore)
+
+		return cert.NotBefore.Add(lifetime / 2) //nolint:mnd
+	}
+	if err != nil {
+		vc.logger.Warn("Error getting renewal info", slogErr(err))
+
+		// Retry in an hour
+		return time.Now().Add(time.Hour)
+	}
+
+	retry := time.Now().Add(resp.RetryAfter)
+	renew := randTime(resp.RenewalInfoResponse.SuggestedWindow.Start, resp.RenewalInfoResponse.SuggestedWindow.End)
+
+	if renew.After(retry) {
+		// If the renewal time is after RetryAfter, recheck then
+		vc.logger.Info("ARI retry", slog.Time("at", retry))
+		return retry
+	}
+
+	vc.logger.Info("ARI renewal", slog.Time("at", renew))
+	return renew
+}
+
+func (vc *valid) shouldRevoke() bool {
 	return false
 }
 

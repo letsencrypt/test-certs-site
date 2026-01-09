@@ -97,7 +97,10 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 
 	for _, site := range cfg.Sites {
 		for domain, chkr := range map[string]checker{
-			site.Domains.Valid:   valid{},
+			site.Domains.Valid: &valid{
+				client: client,
+				logger: slog.With(slog.String("domain", site.Domains.Valid)),
+			},
 			site.Domains.Revoked: revoked{},
 			site.Domains.Expired: expired{},
 		} {
