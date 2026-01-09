@@ -1,6 +1,7 @@
 package acme
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"log/slog"
@@ -33,7 +34,7 @@ type issuer struct {
 	store    *storage.Storage
 }
 
-func (i *issuer) start() {
+func (i *issuer) start(ctx context.Context) {
 	var renewAt time.Time
 
 	i.logger.Info("checking certificate")
@@ -43,15 +44,15 @@ func (i *issuer) start() {
 		i.logger.Error("reading current certificate", slogErr(err))
 		// If we failed to read, leave renewAt zero, and we'll issue a new cert
 	} else {
-		renewAt = i.checkRenew(curr.Leaf)
+		renewAt = i.checkRenew(ctx, curr.Leaf)
 	}
 
 	if time.Now().After(renewAt) {
-		err := i.issue()
+		err := i.issue(ctx)
 		if err != nil {
 			i.logger.Error("issuing new certificate; will retry", slogErr(err))
 
-			i.schedule.RunIn(time.Hour, func() { i.start() })
+			i.schedule.RunIn(time.Hour, i.start)
 		}
 
 		return
@@ -59,11 +60,11 @@ func (i *issuer) start() {
 
 	// Otherwise, schedule rechecking into the future
 	i.logger.Info("scheduling renewal", slog.Time("at", renewAt))
-	i.schedule.RunAt(renewAt, func() { i.start() })
+	i.schedule.RunAt(renewAt, i.start)
 }
 
 // issue the next certificate, then take it.
-func (i *issuer) issue() error {
+func (i *issuer) issue(ctx context.Context) error {
 	// Check if there's a next certificate already in progress
 	next, err := i.store.ReadNext(i.domain)
 	if err != nil {
@@ -75,7 +76,7 @@ func (i *issuer) issue() error {
 		}
 	}
 
-	readyTime, err := i.checkReady(next.Leaf)
+	readyTime, err := i.checkReady(ctx, next.Leaf)
 	if err != nil {
 		i.logger.Error("checking ready certificate", slogErr(err))
 
@@ -86,7 +87,7 @@ func (i *issuer) issue() error {
 			return err
 		}
 
-		return i.issue()
+		return i.issue(ctx)
 	}
 
 	if time.Now().After(readyTime) {
@@ -98,7 +99,7 @@ func (i *issuer) issue() error {
 		i.logger.Info("certificate issuance completed")
 
 		// Jump back to start to schedule renewal
-		i.start()
+		i.start(ctx)
 
 		return nil
 	}

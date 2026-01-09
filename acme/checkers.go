@@ -1,11 +1,15 @@
 package acme
 
 import (
+	"context"
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	mathrand "math/rand/v2"
+	"net/http"
+	"slices"
 	"time"
 
 	"github.com/go-acme/lego/v4/acme/api"
@@ -19,11 +23,12 @@ type checker interface {
 	// It returns a time to wait with a nil error if we should wait and re-check.
 	// If that time has already passed, then the cert is ready to go.
 	// It returns an error if we should throw out this cert.
-	checkReady(cert *x509.Certificate) (time.Time, error)
+	checkReady(ctx context.Context, cert *x509.Certificate) (time.Time, error)
 
 	// checkRenew returns when we should renew it.
-	checkRenew(cert *x509.Certificate) time.Time
+	checkRenew(ctx context.Context, cert *x509.Certificate) time.Time
 
+	// shouldRevoke returns true if this certificate should be revoked.
 	shouldRevoke() bool
 }
 
@@ -32,7 +37,7 @@ type valid struct {
 	logger *slog.Logger
 }
 
-func (vc *valid) checkReady(cert *x509.Certificate) (time.Time, error) {
+func (vc *valid) checkReady(_ context.Context, cert *x509.Certificate) (time.Time, error) {
 	if time.Now().After(cert.NotAfter) {
 		return time.Time{}, fmt.Errorf("certificate expired: %s", cert.NotAfter.Format(time.DateTime))
 	}
@@ -40,25 +45,13 @@ func (vc *valid) checkReady(cert *x509.Certificate) (time.Time, error) {
 	return time.Time{}, nil
 }
 
-func randTime(start, end time.Time) time.Time {
-	window := int64(end.Sub(start))
-	if window <= 0 {
-		// If start == end, we'll get a 0 duration, which we can't pass to mathrand.Int64N
-		return start
-	}
-
-	return start.Add(time.Duration(mathrand.Int64N(window))) //nolint:gosec // math/rand is safe here
-}
-
-func (vc *valid) checkRenew(cert *x509.Certificate) time.Time {
+func (vc *valid) checkRenew(_ context.Context, cert *x509.Certificate) time.Time {
 	resp, err := vc.client.Certificate.GetRenewalInfo(certificate.RenewalInfoRequest{
 		Cert: cert,
 	})
 	if errors.Is(err, api.ErrNoARI) {
 		// without ARI, renew at 50% lifetime
-		lifetime := cert.NotAfter.Sub(cert.NotBefore)
-
-		return cert.NotBefore.Add(lifetime / 2) //nolint:mnd
+		return halfTime(cert)
 	}
 	if err != nil {
 		vc.logger.Warn("Error getting renewal info", slogErr(err))
@@ -86,45 +79,117 @@ func (vc *valid) shouldRevoke() bool {
 	return false
 }
 
-type revoked struct{}
+type revoked struct {
+	http   *http.Client
+	logger *slog.Logger
 
-func (revoked) checkReady(cert *x509.Certificate) (time.Time, error) {
+	checkInterval time.Duration
+}
+
+func (r *revoked) checkCRL(ctx context.Context, cert *x509.Certificate) (bool, error) {
+	if len(cert.CRLDistributionPoints) == 0 {
+		r.logger.Info("No CRL found")
+
+		// Assume revoked in the no-CRL case
+		return true, nil
+	}
+
+	DP := cert.CRLDistributionPoints[0]
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, DP, nil)
+	if err != nil {
+		return false, fmt.Errorf("creating HTTP request: %w", err)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("downloading CRL %q: %w", DP, err)
+	}
+	defer resp.Body.Close()
+
+	der, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return false, fmt.Errorf("reading CRL %q: %w", DP, err)
+	}
+
+	crl, err := x509.ParseRevocationList(der)
+	if err != nil {
+		return false, fmt.Errorf("parsing CRL %q: %w", DP, err)
+	}
+
+	// TODO: Need to plumb issuer in here to check the CRL's signature.
+	// For now, assume it's OK.
+	// err = crl.CheckSignatureFrom(issuer)
+
+	return slices.ContainsFunc(crl.RevokedCertificateEntries, func(entry x509.RevocationListEntry) bool {
+		return entry.SerialNumber.Cmp(cert.SerialNumber) == 0
+	}), nil
+}
+
+func (r *revoked) checkReady(ctx context.Context, cert *x509.Certificate) (time.Time, error) {
 	if time.Now().After(cert.NotAfter) {
 		return time.Time{}, fmt.Errorf("certificate expired: %s", cert.NotAfter.Format(time.DateTime))
 	}
 
-	// TODO: Actually check CRLs.
+	isRevoked, err := r.checkCRL(ctx, cert)
+	if err != nil {
+		r.logger.Warn("Error checking CRL", slogErr(err))
+
+		return time.Now().Add(r.checkInterval), err
+	}
+
+	if !isRevoked {
+		retryAt := time.Now().Add(r.checkInterval)
+		r.logger.Info("Certificate not yet revoked: will recheck", slog.Time("at", retryAt))
+
+		return retryAt, err
+	}
+
+	// If we don't have a CRLDP, we don't check.
 	return time.Time{}, nil
 }
 
-func (revoked) checkRenew(cert *x509.Certificate) time.Time {
-	// Can't use ARI for revoked, because it'll want to revoke immediately
-	// Renew at 50% lifetime
-	lifetime := cert.NotAfter.Sub(cert.NotBefore)
-
-	return cert.NotBefore.Add(lifetime / 2) //nolint:mnd
+// checkRenew for a revoked certificate always returns the midpoint of the
+// cert's lifetime. We can't use ARI because it'll want to always replace a
+// revoked certificate immediately.
+func (r *revoked) checkRenew(_ context.Context, cert *x509.Certificate) time.Time {
+	return halfTime(cert)
 }
 
-func (revoked) shouldRevoke() bool {
+func (r *revoked) shouldRevoke() bool {
 	return true
 }
 
 type expired struct{}
 
-func (expired) checkReady(cert *x509.Certificate) (time.Time, error) {
-	// Certificate is "ready" when it is expired
+// checkReady for expired returns when it expires
+func (expired) checkReady(_ context.Context, cert *x509.Certificate) (time.Time, error) {
 	return cert.NotAfter, nil
 }
 
-func (expired) checkRenew(cert *x509.Certificate) time.Time {
-	// Expired certs could just hang out forever, but we should still routinely replace them
-	// That makes sure any certificate changes will still show up.
-	// We kick off the renewal once it's been expired for its lifetime
-	lifetime := cert.NotAfter.Sub(cert.NotBefore)
-
-	return cert.NotAfter.Add(lifetime)
+// checkRenew for expired certs waits the cert's lifetime after it expired.
+// That way we replace them to keep up with any profile changes, even if we
+// could just keep using one expired cert.
+func (expired) checkRenew(_ context.Context, cert *x509.Certificate) time.Time {
+	return cert.NotAfter.Add(cert.NotAfter.Sub(cert.NotBefore))
 }
 
 func (expired) shouldRevoke() bool {
 	return false
+}
+
+func randTime(start, end time.Time) time.Time {
+	window := int64(end.Sub(start))
+	if window <= 0 {
+		// If start == end, we'll get a 0 duration, which we can't pass to mathrand.Int64N
+		return start
+	}
+
+	return start.Add(time.Duration(mathrand.Int64N(window))) //nolint:gosec // math/rand is safe here
+}
+
+func halfTime(cert *x509.Certificate) time.Time {
+	lifetime := cert.NotAfter.Sub(cert.NotBefore)
+
+	return cert.NotBefore.Add(lifetime / 2) //nolint:mnd
 }

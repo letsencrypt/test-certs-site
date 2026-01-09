@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"log/slog"
 	mathrand "math/rand/v2"
+	"net/http"
 	"time"
 
 	"github.com/go-acme/lego/v4/lego"
@@ -101,7 +102,11 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 				client: client,
 				logger: slog.With(slog.String("domain", site.Domains.Valid)),
 			},
-			site.Domains.Revoked: revoked{},
+			site.Domains.Revoked: &revoked{
+				http:          http.DefaultClient,
+				logger:        slog.With(slog.String("domain", site.Domains.Revoked)),
+				checkInterval: time.Hour, // TODO
+			},
 			site.Domains.Expired: expired{},
 		} {
 			i := issuer{
