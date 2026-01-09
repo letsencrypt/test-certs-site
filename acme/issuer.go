@@ -58,7 +58,7 @@ func (i *issuer) start() {
 	}
 
 	// Otherwise, schedule rechecking into the future
-	i.logger.Info("scheduling renewal", slog.String("at", renewAt.Format(time.DateTime)))
+	i.logger.Info("scheduling renewal", slog.Time("at", renewAt))
 	i.schedule.RunAt(renewAt, func() { i.start() })
 }
 
@@ -104,7 +104,7 @@ func (i *issuer) issue() error {
 	}
 
 	// Re-check at readyTime
-	i.logger.Info("waiting for next certificate to be ready", slog.String("at", readyTime.Format(time.DateTime)))
+	i.logger.Info("waiting for next certificate to be ready", slog.Time("at", readyTime))
 	i.schedule.RunAt(readyTime, i.start)
 
 	return nil
