@@ -49,7 +49,8 @@ func run(args []string) error {
 	}
 
 	// When this context is canceled, the scheduler running jobs and the server will exit
-	ctx, _ := signal.NotifyContext(context.Background(), syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM)
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer cancel()
 
 	schedule := scheduler.New(ctx)
 

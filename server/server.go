@@ -16,7 +16,7 @@ import (
 // ACME TLS-ALPN-01 challenges.
 type GetCertificateFunc func(info *tls.ClientHelloInfo) (*tls.Certificate, error)
 
-// Run the server, until ctx is canceled
+// Run the server, until the context is canceled.
 func Run(ctx context.Context, cfg *config.Config, getCert GetCertificateFunc) error {
 	// We want http requests to time out relatively quickly, as this server shouldn't be doing much.
 	const timeout = 5 * time.Second
@@ -41,7 +41,7 @@ func Run(ctx context.Context, cfg *config.Config, getCert GetCertificateFunc) er
 	go func() {
 		<-ctx.Done()
 
-		err := srv.Shutdown(context.Background()) //nolint:contextcheck // Allow graceful shutdown, ctx is already done
+		err := srv.Shutdown(context.WithoutCancel(ctx))
 		if err != nil {
 			slog.Error(err.Error())
 		}

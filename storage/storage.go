@@ -171,7 +171,7 @@ func (s *Storage) StoreNextKey(domain string, keyType string) (crypto.Signer, er
 }
 
 // StoreNextCert stores the next certificate for the domain.
-// Certificates should be a PEM sequence to write to disk
+// Certificates should be a PEM sequence to write to disk.
 func (s *Storage) StoreNextCert(domain string, certificates []byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

@@ -32,8 +32,7 @@ type CertManager struct {
 	storage *storage.Storage
 }
 
-// New sets up the certs issuer.
-// This will register an ACME account if needed.
+// New sets up the certificate manager, holding current certs.
 func New(cfg *config.Config, store *storage.Storage) (*CertManager, error) {
 	c := &CertManager{
 		certs:          make(map[string]*tls.Certificate),
