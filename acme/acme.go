@@ -74,6 +74,10 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 		return err
 	}
 
+	crlClient := &http.Client{
+		Timeout: time.Minute,
+	}
+
 	// Register if needed
 	if user.reg == nil {
 		reg, err := client.Registration.Register(registration.RegisterOptions{
@@ -99,7 +103,7 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 				logger: slog.With(slog.String("domain", site.Domains.Valid)),
 			},
 			site.Domains.Revoked: &revoked{
-				http:          http.DefaultClient,
+				http:          crlClient,
 				logger:        slog.With(slog.String("domain", site.Domains.Revoked)),
 				checkInterval: time.Hour,
 			},
