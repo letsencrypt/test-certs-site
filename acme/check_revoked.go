@@ -72,7 +72,7 @@ func (r *revoked) checkReady(ctx context.Context, cert, issuer *x509.Certificate
 	if err != nil {
 		r.logger.Warn("Error checking CRL", slogErr(err))
 
-		return time.Now().Add(r.checkInterval), err
+		return time.Now().Add(r.checkInterval), nil
 	}
 
 	if !isRevoked {
