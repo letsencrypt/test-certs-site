@@ -75,7 +75,7 @@ func (r *revoked) checkReady(ctx context.Context, cert, issuer *x509.Certificate
 		retryAt := time.Now().Add(r.checkInterval)
 		r.logger.Info("Certificate not yet revoked: will recheck", slog.Time("at", retryAt))
 
-		return retryAt, err
+		return retryAt, nil
 	}
 
 	// The certificate is revoked, so it is ready
