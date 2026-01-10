@@ -26,3 +26,24 @@ func FuzzHalfTime(f *testing.F) {
 		}
 	})
 }
+
+func FuzzRandTime(f *testing.F) {
+	f.Add(uint64(0))
+	f.Add(uint64(time.Minute))
+	f.Add(uint64(time.Hour))
+
+	f.Fuzz(func(t *testing.T, delta uint64) {
+		now := time.Now()
+		then := now.Add(time.Duration(delta))
+
+		in := randTime(now, then)
+
+		if in.Before(now) {
+			t.Errorf("randTime returned time before start (%s): %s %d %d", now, in, now.UnixNano(), in.UnixNano())
+		}
+
+		if in.After(then) {
+			t.Errorf("randTime returned time after end (%s): %s, %d < %d", then, in, then.UnixNano(), in.UnixNano())
+		}
+	})
+}
