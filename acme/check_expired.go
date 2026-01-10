@@ -8,7 +8,7 @@ import (
 
 type expired struct{}
 
-// checkReady for expired returns when it expires
+// checkReady returns the time this certificate is ready: its expiry date.
 func (expired) checkReady(_ context.Context, cert, _ *x509.Certificate) (time.Time, error) {
 	return cert.NotAfter, nil
 }
@@ -20,6 +20,7 @@ func (expired) checkRenew(_ context.Context, cert *x509.Certificate) time.Time {
 	return cert.NotAfter.Add(cert.NotAfter.Sub(cert.NotBefore))
 }
 
+// shouldRevoke returns false, as we don't need to revoke the expired certificates.
 func (expired) shouldRevoke() bool {
 	return false
 }

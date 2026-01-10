@@ -58,6 +58,10 @@ func (r *revoked) checkCRL(ctx context.Context, cert, issuer *x509.Certificate) 
 		return false, fmt.Errorf("validating CRL: %w", err)
 	}
 
+	if time.Now().After(crl.NextUpdate) {
+		return false, fmt.Errorf("CRL %q is expired at: %s", url, crl.NextUpdate.Format(time.DateTime))
+	}
+
 	return slices.ContainsFunc(crl.RevokedCertificateEntries, func(entry x509.RevocationListEntry) bool {
 		return entry.SerialNumber.Cmp(cert.SerialNumber) == 0
 	}), nil

@@ -110,7 +110,9 @@ func createMocks(t *testing.T) (*x509.Certificate, []byte) {
 	}
 
 	crlTemplate := &x509.RevocationList{
-		Number: big.NewInt(1),
+		Number:     big.NewInt(1),
+		ThisUpdate: time.Now().Add(-time.Hour),
+		NextUpdate: time.Now().Add(time.Hour),
 		RevokedCertificateEntries: []x509.RevocationListEntry{
 			{
 				SerialNumber:   big.NewInt(12345),
