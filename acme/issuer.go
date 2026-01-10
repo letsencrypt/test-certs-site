@@ -62,24 +62,28 @@ func (i *issuer) start(ctx context.Context) {
 		renewAt = i.checkRenew(ctx, curr.Leaf)
 	}
 
+	var nextRun time.Time
+
 	if time.Now().After(renewAt) {
-		err := i.issue(ctx)
+		rerunAt, err := i.issue(ctx)
 		if err != nil {
 			i.logger.Error("issuing new certificate; will retry", slogErr(err))
 
 			i.schedule.RunIn(time.Hour, i.start)
 		}
 
-		return
+		nextRun = rerunAt
+	} else {
+		nextRun = renewAt
+		i.logger.Info("scheduling renewal", slog.Time("at", renewAt))
 	}
 
-	// Otherwise, schedule rechecking into the future
-	i.logger.Info("scheduling renewal", slog.Time("at", renewAt))
-	i.schedule.RunAt(renewAt, i.start)
+	i.schedule.RunAt(nextRun, i.start)
 }
 
 // issue the next certificate, then take it.
-func (i *issuer) issue(ctx context.Context) error {
+// Return the time to call Start next
+func (i *issuer) issue(ctx context.Context) (time.Time, error) {
 	// Check if there's a next certificate already in progress
 	next, err := i.store.ReadNext(i.domain)
 	if err != nil {
@@ -87,52 +91,46 @@ func (i *issuer) issue(ctx context.Context) error {
 
 		next, err = i.issueNext()
 		if err != nil {
-			return err
+			return time.Time{}, err
 		}
 	}
 
 	if len(next.Certificate) <= 1 {
-		return fmt.Errorf("no issuer certificate: chain length %d", len(next.Certificate))
+		return time.Time{}, fmt.Errorf("no issuer certificate: chain length %d", len(next.Certificate))
 	}
 
 	issuerCert, err := x509.ParseCertificate(next.Certificate[1])
 	if err != nil {
-		return fmt.Errorf("parsing issuer certificate: %w", err)
+		return time.Time{}, fmt.Errorf("parsing issuer certificate: %w", err)
 	}
 
 	readyTime, err := i.checkReady(ctx, next.Leaf, issuerCert)
 	if err != nil {
-		i.logger.Error("checking ready certificate", slogErr(err))
-
 		// checkReady can return an error if the current "next" cert is broken (eg, expired)
-		// and so we need to issue a new one and start over.
-		_, err = i.issueNext()
-		if err != nil {
-			return err
+		// and so we need to issue a new one to start over.
+		_, errNext := i.issueNext()
+		if errNext != nil {
+			return time.Time{}, errNext
 		}
 
-		return i.issue(ctx)
+		// Return the original error from checkReady, to log
+		return time.Time{}, err
 	}
 
 	if time.Now().After(readyTime) {
 		err := i.takeNext()
 		if err != nil {
-			return err
+			return time.Time{}, err
 		}
 
 		i.logger.Info("certificate issuance completed")
 
-		// Jump back to start to schedule renewal
-		i.start(ctx)
-
-		return nil
+		// Return a zero time and no error, which will restart immediately to schedule renewal
+		return time.Time{}, nil
 	}
 
 	// Re-check at readyTime
-	i.logger.Info("waiting for next certificate to be ready", slog.Time("at", readyTime))
-	i.schedule.RunAt(readyTime, i.start)
-
-	return nil
+	return readyTime, nil
 }
 
 // issueNext is called to actually issue the next certificate
