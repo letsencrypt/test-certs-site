@@ -26,27 +26,31 @@ func (r *revoked) checkCRL(ctx context.Context, cert, issuer *x509.Certificate) 
 		return true, nil
 	}
 
-	DP := cert.CRLDistributionPoints[0]
+	url := cert.CRLDistributionPoints[0]
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, DP, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return false, fmt.Errorf("creating HTTP request: %w", err)
 	}
 
 	resp, err := r.http.Do(req)
 	if err != nil {
-		return false, fmt.Errorf("downloading CRL %q: %w", DP, err)
+		return false, fmt.Errorf("downloading CRL %q: %w", url, err)
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("downloading CRL %q: invalid status code: %d", url, resp.StatusCode)
+	}
+
 	der, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return false, fmt.Errorf("reading CRL %q: %w", DP, err)
+		return false, fmt.Errorf("reading CRL %q: %w", url, err)
 	}
 
 	crl, err := x509.ParseRevocationList(der)
 	if err != nil {
-		return false, fmt.Errorf("parsing CRL %q: %w", DP, err)
+		return false, fmt.Errorf("parsing CRL %q: %w", url, err)
 	}
 
 	err = crl.CheckSignatureFrom(issuer)
