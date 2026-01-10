@@ -9,7 +9,7 @@ import (
 type expired struct{}
 
 // checkReady for expired returns when it expires
-func (expired) checkReady(_ context.Context, cert *x509.Certificate) (time.Time, error) {
+func (expired) checkReady(_ context.Context, cert, _ *x509.Certificate) (time.Time, error) {
 	return cert.NotAfter, nil
 }
 

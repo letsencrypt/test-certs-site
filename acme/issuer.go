@@ -23,7 +23,7 @@ type checker interface {
 	// If that time has already passed, then the cert is ready to go.
 	// It returns an error if we should throw out this cert.
 	// Checks CRLs for revoked certs.
-	checkReady(ctx context.Context, cert *x509.Certificate) (time.Time, error)
+	checkReady(ctx context.Context, cert, issuer *x509.Certificate) (time.Time, error)
 
 	// checkRenew returns when we should renew it.
 	// Checks ARI for valid certs.
@@ -91,7 +91,16 @@ func (i *issuer) issue(ctx context.Context) error {
 		}
 	}
 
-	readyTime, err := i.checkReady(ctx, next.Leaf)
+	if len(next.Certificate) <= 1 {
+		return fmt.Errorf("no issuer certificate: chain length %d", len(next.Certificate))
+	}
+
+	issuerCert, err := x509.ParseCertificate(next.Certificate[1])
+	if err != nil {
+		return fmt.Errorf("parsing issuer certificate: %w", err)
+	}
+
+	readyTime, err := i.checkReady(ctx, next.Leaf, issuerCert)
 	if err != nil {
 		i.logger.Error("checking ready certificate", slogErr(err))
 

@@ -19,7 +19,7 @@ type valid struct {
 	logger *slog.Logger
 }
 
-func (vc *valid) checkReady(_ context.Context, cert *x509.Certificate) (time.Time, error) {
+func (vc *valid) checkReady(_ context.Context, cert, _ *x509.Certificate) (time.Time, error) {
 	if time.Now().After(cert.NotAfter) {
 		return time.Time{}, fmt.Errorf("certificate expired: %s", cert.NotAfter.Format(time.DateTime))
 	}

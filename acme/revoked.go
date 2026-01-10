@@ -18,7 +18,7 @@ type revoked struct {
 	checkInterval time.Duration
 }
 
-func (r *revoked) checkCRL(ctx context.Context, cert *x509.Certificate) (bool, error) {
+func (r *revoked) checkCRL(ctx context.Context, cert, issuer *x509.Certificate) (bool, error) {
 	if len(cert.CRLDistributionPoints) == 0 {
 		r.logger.Info("No CRL found")
 
@@ -49,21 +49,22 @@ func (r *revoked) checkCRL(ctx context.Context, cert *x509.Certificate) (bool, e
 		return false, fmt.Errorf("parsing CRL %q: %w", DP, err)
 	}
 
-	// TODO: Need to plumb issuer in here to check the CRL's signature.
-	// For now, assume it's OK.
-	// err = crl.CheckSignatureFrom(issuer)
+	err = crl.CheckSignatureFrom(issuer)
+	if err != nil {
+		return false, fmt.Errorf("validating CRL: %w", err)
+	}
 
 	return slices.ContainsFunc(crl.RevokedCertificateEntries, func(entry x509.RevocationListEntry) bool {
 		return entry.SerialNumber.Cmp(cert.SerialNumber) == 0
 	}), nil
 }
 
-func (r *revoked) checkReady(ctx context.Context, cert *x509.Certificate) (time.Time, error) {
+func (r *revoked) checkReady(ctx context.Context, cert, issuer *x509.Certificate) (time.Time, error) {
 	if time.Now().After(cert.NotAfter) {
 		return time.Time{}, fmt.Errorf("certificate expired: %s", cert.NotAfter.Format(time.DateTime))
 	}
 
-	isRevoked, err := r.checkCRL(ctx, cert)
+	isRevoked, err := r.checkCRL(ctx, cert, issuer)
 	if err != nil {
 		r.logger.Warn("Error checking CRL", slogErr(err))
 
