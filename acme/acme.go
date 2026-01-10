@@ -105,7 +105,7 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 			site.Domains.Revoked: &revoked{
 				http:          http.DefaultClient,
 				logger:        slog.With(slog.String("domain", site.Domains.Revoked)),
-				checkInterval: time.Hour, // TODO
+				checkInterval: time.Hour, // TODO: We might want to make this configurable in the future
 			},
 			site.Domains.Expired: expired{},
 		} {
