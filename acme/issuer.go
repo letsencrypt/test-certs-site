@@ -68,11 +68,10 @@ func (i *issuer) start(ctx context.Context) {
 		rerunAt, err := i.issue(ctx)
 		if err != nil {
 			i.logger.Error("issuing new certificate; will retry", slogErr(err))
-
-			i.schedule.RunIn(time.Hour, i.start)
+			nextRun = time.Now().Add(time.Hour)
+		} else {
+			nextRun = rerunAt
 		}
-
-		nextRun = rerunAt
 	} else {
 		nextRun = renewAt
 		i.logger.Info("scheduling renewal", slog.Time("at", renewAt))
