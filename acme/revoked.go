@@ -33,7 +33,7 @@ func (r *revoked) checkCRL(ctx context.Context, cert, issuer *x509.Certificate) 
 		return false, fmt.Errorf("creating HTTP request: %w", err)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := r.http.Do(req)
 	if err != nil {
 		return false, fmt.Errorf("downloading CRL %q: %w", DP, err)
 	}
