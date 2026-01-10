@@ -34,8 +34,7 @@ func TestCheckRevokedRenew(t *testing.T) {
 func TestCheckRevoked(t *testing.T) {
 	t.Parallel()
 
-	caKey, caCert := createMockCA(t)
-	crlData := createMockCRL(t, caCert, caKey)
+	caCert, crlData := createMocks(t)
 	crlPath := "/test.crl"
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -57,7 +56,23 @@ func TestCheckRevoked(t *testing.T) {
 		t.Fatal("revoked certs should revoke")
 	}
 
-	readyTime, err := r.checkReady(t.Context(), createMockCert(t, caCert, caKey, server.URL+crlPath), caCert)
+	readyTime, err := r.checkReady(t.Context(), &x509.Certificate{
+		SerialNumber:          big.NewInt(1111),
+		NotAfter:              time.Now().Add(time.Hour),
+		CRLDistributionPoints: []string{server.URL + crlPath},
+	}, caCert)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if readyTime.Before(time.Now()) {
+		t.Fatal("1111 isn't in CRL, should not be ready")
+	}
+
+	readyTime, err = r.checkReady(t.Context(), &x509.Certificate{
+		SerialNumber:          big.NewInt(12345),
+		NotAfter:              time.Now().Add(time.Hour),
+		CRLDistributionPoints: []string{server.URL + crlPath},
+	}, caCert)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +81,7 @@ func TestCheckRevoked(t *testing.T) {
 	}
 }
 
-func createMockCA(t *testing.T) (*ecdsa.PrivateKey, *x509.Certificate) {
+func createMocks(t *testing.T) (*x509.Certificate, []byte) {
 	t.Helper()
 	caKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
@@ -94,39 +109,6 @@ func createMockCA(t *testing.T) (*ecdsa.PrivateKey, *x509.Certificate) {
 		t.Fatal(err)
 	}
 
-	return caKey, caCert
-}
-
-func createMockCert(t *testing.T, caCert *x509.Certificate, caKey *ecdsa.PrivateKey, crlURL string) *x509.Certificate {
-	t.Helper()
-
-	certKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	certTemplate := &x509.Certificate{
-		SerialNumber:          big.NewInt(12345),
-		NotBefore:             time.Now().Add(-time.Hour),
-		NotAfter:              time.Now().Add(time.Hour),
-		CRLDistributionPoints: []string{crlURL},
-	}
-
-	certDER, err := x509.CreateCertificate(rand.Reader, certTemplate, caCert, &certKey.PublicKey, caKey)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cert, err := x509.ParseCertificate(certDER)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	return cert
-}
-
-func createMockCRL(t *testing.T, caCert *x509.Certificate, caKey *ecdsa.PrivateKey) []byte {
-	t.Helper()
-
 	crlTemplate := &x509.RevocationList{
 		Number: big.NewInt(1),
 		RevokedCertificateEntries: []x509.RevocationListEntry{
@@ -142,5 +124,5 @@ func createMockCRL(t *testing.T, caCert *x509.Certificate, caKey *ecdsa.PrivateK
 		t.Fatal(err)
 	}
 
-	return crlData
+	return caCert, crlData
 }
