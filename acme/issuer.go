@@ -151,8 +151,8 @@ func (i *issuer) issueNext() (tls.Certificate, error) {
 	}
 
 	if i.shouldRevoke() {
-		// Revoke with reason keyCompromise because browsers believe that one
-		reasonKeyCompromise := uint(0)
+		// Revoke with reason keyCompromise so browsers actually process this revocation
+		reasonKeyCompromise := uint(1)
 		err := i.client.Certificate.RevokeWithReason(resp.Certificate, &reasonKeyCompromise)
 		if err != nil {
 			// TODO: if we failed to revoke, we should probably retry revoking
