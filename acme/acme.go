@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"log/slog"
 	mathrand "math/rand/v2"
+	"net/http"
 	"time"
 
 	"github.com/go-acme/lego/v4/lego"
@@ -92,15 +93,23 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 
 	for _, site := range cfg.Sites {
 		// This is just a placeholder in this PR; a subsequent PR will kick off issuance for each
-		for _, domain := range []string{
-			site.Domains.Valid,
-			site.Domains.Revoked,
-			site.Domains.Expired,
+		for domain, c := range map[string]checker{
+			site.Domains.Valid: &valid{
+				ari:    client.Certificate,
+				logger: slog.With(slog.String("domain", site.Domains.Valid)),
+			},
+			site.Domains.Revoked: &revoked{
+				http:          http.DefaultClient,
+				logger:        slog.With(slog.String("domain", site.Domains.Revoked)),
+				checkInterval: time.Hour,
+			},
+			site.Domains.Expired: expired{},
 		} {
-			// Start each issuer within the next minute, but not all at once
+			// Start each issuer within the next minute, spread out so they don't all run together
 			delay := time.Duration(mathrand.Int64N(int64(time.Minute))) //nolint:gosec // Not security-sensitive use
 			schedule.RunIn(delay, func() {
-				slog.Info("Starting Issuance", slog.String("domain", domain))
+				// This is still a placeholder, for later PRs to expand on, issuing certs.
+				slog.Info("Starting Issuance", slog.String("domain", domain), slog.Bool("revoked", c.shouldRevoke()))
 			})
 		}
 	}
