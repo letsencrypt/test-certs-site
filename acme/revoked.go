@@ -78,7 +78,7 @@ func (r *revoked) checkReady(ctx context.Context, cert, issuer *x509.Certificate
 		return retryAt, err
 	}
 
-	// If we don't have a CRLDP, we don't check.
+	// The certificate is revoked, so it is ready
 	return time.Time{}, nil
 }
 
