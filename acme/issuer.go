@@ -171,7 +171,6 @@ func (i *issuer) issueNext() (tls.Certificate, error) {
 }
 
 // takeNext checks if the next certificate is ready, and takes it if so
-// It returns the time to start() next
 func (i *issuer) takeNext() error {
 	i.logger.Info("next certificate is ready")
 	// Next cert is ready! Take it.
