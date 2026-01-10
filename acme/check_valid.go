@@ -21,7 +21,7 @@ type valid struct {
 	logger *slog.Logger
 }
 
-func (vc *valid) checkReady(_ context.Context, cert, _ *x509.Certificate) (time.Time, error) {
+func (v *valid) checkReady(_ context.Context, cert, _ *x509.Certificate) (time.Time, error) {
 	if time.Now().After(cert.NotAfter) {
 		return time.Time{}, fmt.Errorf("certificate expired: %s", cert.NotAfter.Format(time.DateTime))
 	}
@@ -29,8 +29,8 @@ func (vc *valid) checkReady(_ context.Context, cert, _ *x509.Certificate) (time.
 	return time.Time{}, nil
 }
 
-func (vc *valid) checkRenew(_ context.Context, cert *x509.Certificate) time.Time {
-	resp, err := vc.ari.GetRenewalInfo(certificate.RenewalInfoRequest{
+func (v *valid) checkRenew(_ context.Context, cert *x509.Certificate) time.Time {
+	resp, err := v.ari.GetRenewalInfo(certificate.RenewalInfoRequest{
 		Cert: cert,
 	})
 	if errors.Is(err, api.ErrNoARI) {
@@ -38,7 +38,7 @@ func (vc *valid) checkRenew(_ context.Context, cert *x509.Certificate) time.Time
 		return halfTime(cert)
 	}
 	if err != nil {
-		vc.logger.Warn("Error getting renewal info", slogErr(err))
+		v.logger.Warn("Error getting renewal info", slogErr(err))
 
 		// Retry in an hour
 		return time.Now().Add(time.Hour)
@@ -49,16 +49,16 @@ func (vc *valid) checkRenew(_ context.Context, cert *x509.Certificate) time.Time
 
 	if renew.After(retry) {
 		// If the renewal time is after RetryAfter, recheck then
-		vc.logger.Info("ARI retry", slog.Time("at", retry))
+		v.logger.Info("ARI retry", slog.Time("at", retry))
 
 		return retry
 	}
 
-	vc.logger.Info("ARI renewal", slog.Time("at", renew))
+	v.logger.Info("ARI renewal", slog.Time("at", renew))
 
 	return renew
 }
 
-func (vc *valid) shouldRevoke() bool {
+func (v *valid) shouldRevoke() bool {
 	return false
 }
