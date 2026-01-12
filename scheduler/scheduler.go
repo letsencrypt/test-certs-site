@@ -9,7 +9,7 @@ import (
 
 type job struct {
 	at   time.Time
-	task func()
+	task func(ctx context.Context)
 }
 
 // Schedule is the main handle for the scheduler, returned from New()
@@ -32,12 +32,12 @@ func New(ctx context.Context) *Schedule {
 }
 
 // RunAt schedules a task to be run at some time in the future.
-func (s *Schedule) RunAt(at time.Time, task func()) {
+func (s *Schedule) RunAt(at time.Time, task func(ctx context.Context)) {
 	s.incoming <- job{task: task, at: at}
 }
 
 // RunIn schedules a task to be run after duration has passed.
-func (s *Schedule) RunIn(in time.Duration, task func()) {
+func (s *Schedule) RunIn(in time.Duration, task func(ctx context.Context)) {
 	s.RunAt(time.Now().Add(in), task)
 }
 
@@ -50,7 +50,7 @@ func (s *Schedule) loop(ctx context.Context) {
 		}
 		select {
 		case <-next:
-			s.execute()
+			s.execute(ctx)
 		case j := <-s.incoming:
 			heap.Push(s.jobs, j)
 		case <-ctx.Done():
@@ -60,7 +60,7 @@ func (s *Schedule) loop(ctx context.Context) {
 }
 
 // execute any job whose time has come
-func (s *Schedule) execute() {
+func (s *Schedule) execute(ctx context.Context) {
 	for len(*s.jobs) > 0 {
 		if time.Now().Before((*s.jobs)[0].at) {
 			// Heap minimum is in the future, so we are done for now
@@ -73,6 +73,6 @@ func (s *Schedule) execute() {
 			panic("incorrect type popped from job heap")
 		}
 
-		go r.task()
+		go r.task(ctx)
 	}
 }
