@@ -31,6 +31,8 @@ type issuer struct {
 	store    *storage.Storage
 }
 
+// start is the main entry point for issuing a certificate.
+// It runs as a scheduled job, and reschedules itself to run again.
 func (i *issuer) start(ctx context.Context) {
 	var renewAt time.Time
 
@@ -94,7 +96,7 @@ func (i *issuer) issue(ctx context.Context) (time.Time, error) {
 			return time.Time{}, errNext
 		}
 
-		// Return the original error from checkReady, to log
+		// Return the original error from checkReady, for logging
 		return time.Time{}, err
 	}
 
@@ -155,15 +157,10 @@ func (i *issuer) issueNext() (tls.Certificate, error) {
 // takeNext checks if the next certificate is ready, and takes it if so
 func (i *issuer) takeNext() error {
 	i.logger.Info("next certificate is ready")
-	// Next cert is ready! Take it.
 	_, err := i.store.TakeNext(i.domain)
 	if err != nil {
 		return err
 	}
-	err = i.manager.LoadCertificate(i.domain)
-	if err != nil {
-		return err
-	}
 
-	return nil
+	return i.manager.LoadCertificate(i.domain)
 }
