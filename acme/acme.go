@@ -74,6 +74,10 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 		return err
 	}
 
+	crlClient := &http.Client{
+		Timeout: time.Minute,
+	}
+
 	// Register if needed
 	if user.reg == nil {
 		reg, err := client.Registration.Register(registration.RegisterOptions{
@@ -91,26 +95,21 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 		slog.Info("Created new ACME account", slog.String("directory", cfg.ACME.Directory), slog.String("User", user.reg.URI))
 	}
 
-	err = client.Challenge.SetTLSALPN01Provider(manager)
-	if err != nil {
-		return err
-	}
-
 	for _, site := range cfg.Sites {
-		for domain, chkr := range map[string]checker{
+		for domain, c := range map[string]checker{
 			site.Domains.Valid: &valid{
-				client: client,
+				ari:    client.Certificate,
 				logger: slog.With(slog.String("domain", site.Domains.Valid)),
 			},
 			site.Domains.Revoked: &revoked{
-				http:          http.DefaultClient,
+				http:          crlClient,
 				logger:        slog.With(slog.String("domain", site.Domains.Revoked)),
 				checkInterval: time.Hour, // TODO: We might want to make this configurable in the future
 			},
 			site.Domains.Expired: expired{},
 		} {
 			i := issuer{
-				checker: chkr,
+				checker: c,
 
 				domain:   domain,
 				issuerCN: site.IssuerCN,
@@ -130,5 +129,5 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 		}
 	}
 
-	return nil
+	return client.Challenge.SetTLSALPN01Provider(manager)
 }

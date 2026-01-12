@@ -58,6 +58,10 @@ func (r *revoked) checkCRL(ctx context.Context, cert, issuer *x509.Certificate) 
 		return false, fmt.Errorf("validating CRL: %w", err)
 	}
 
+	if time.Now().After(crl.NextUpdate) {
+		return false, fmt.Errorf("CRL %q is expired at: %s", url, crl.NextUpdate.Format(time.DateTime))
+	}
+
 	return slices.ContainsFunc(crl.RevokedCertificateEntries, func(entry x509.RevocationListEntry) bool {
 		return entry.SerialNumber.Cmp(cert.SerialNumber) == 0
 	}), nil
@@ -72,7 +76,7 @@ func (r *revoked) checkReady(ctx context.Context, cert, issuer *x509.Certificate
 	if err != nil {
 		r.logger.Warn("Error checking CRL", slogErr(err))
 
-		return time.Now().Add(r.checkInterval), err
+		return time.Now().Add(r.checkInterval), nil
 	}
 
 	if !isRevoked {
@@ -95,10 +99,4 @@ func (r *revoked) checkRenew(_ context.Context, cert *x509.Certificate) time.Tim
 
 func (r *revoked) shouldRevoke() bool {
 	return true
-}
-
-func halfTime(cert *x509.Certificate) time.Time {
-	lifetime := cert.NotAfter.Sub(cert.NotBefore)
-
-	return cert.NotBefore.Add(lifetime / 2) //nolint:mnd
 }
