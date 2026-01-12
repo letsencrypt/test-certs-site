@@ -65,7 +65,7 @@ func (i *issuer) start(ctx context.Context) {
 }
 
 // issue the next certificate, then take it.
-// Return the time to call Start next
+// Return the time to call i.start next
 func (i *issuer) issue(ctx context.Context) (time.Time, error) {
 	// Check if there's a next certificate already in progress
 	next, err := i.store.ReadNext(i.domain)
