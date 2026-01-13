@@ -24,7 +24,7 @@ func TestScheduler(t *testing.T) {
 
 		for _, num := range []int64{8, 11, 10, 3, 7, 4, 6, 9, -1, 5, 1, 12, 2} {
 			wg.Add(1)
-			s.RunIn(time.Duration(num)*time.Hour, func() {
+			s.RunIn(time.Duration(num)*time.Hour, func(_ context.Context) {
 				mu.Lock()
 				defer mu.Unlock()
 
