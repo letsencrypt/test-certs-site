@@ -1,0 +1,38 @@
+services:
+  test-certs-site:
+    build: .
+    volumes:
+      - ./integration/test-certs-site-config.json:/test-certs-site-config.json
+      - ./integration/pebble.minica.pem:/pebble.minica.pem
+      - test-certs-data:/data
+    environment:
+      LEGO_CA_CERTIFICATES: /pebble.minica.pem
+    depends_on:
+      - pebble
+    ports:
+      - "5001:5001"
+    networks:
+      testnet:
+        aliases:
+          - valid.tsc
+          - revoked.tsc
+          - expired.tsc
+
+  pebble:
+    image: ghcr.io/letsencrypt/pebble
+    command: -config /pebble-config.json
+    volumes:
+      - ./integration/pebble-config.json:/pebble-config.json
+    ports:
+      - "14000:14000"
+      - "15000:15000"
+    networks:
+      - testnet
+
+networks:
+  testnet:
+    driver: bridge
+
+
+volumes:
+  test-certs-data:
