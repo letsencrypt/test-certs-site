@@ -1,0 +1,19 @@
+{
+  "listenAddr": ":5001",
+  "sites": [
+    {
+      "issuerCN": "Pebble Root CA",
+      "keyType": "p256",
+      "domains": {
+        "valid": "valid.tsc",
+        "expired": "expired.tsc",
+        "revoked": "revoked.tsc"
+      }
+    }
+  ],
+  "acme": {
+    "directory": "https://pebble:14000/dir",
+    "termsOfServiceAgreed": true
+  },
+  "dataDir": "/data"
+}
