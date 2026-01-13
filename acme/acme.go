@@ -96,7 +96,6 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 	}
 
 	for _, site := range cfg.Sites {
-		// This is just a placeholder in this PR; a subsequent PR will kick off issuance for each
 		for domain, c := range map[string]checker{
 			site.Domains.Valid: &valid{
 				ari:    client.Certificate,
@@ -109,12 +108,24 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 			},
 			site.Domains.Expired: expired{},
 		} {
+			i := issuer{
+				checker: c,
+
+				domain:   domain,
+				issuerCN: site.IssuerCN,
+				keyType:  site.KeyType,
+				profile:  site.Profile,
+
+				client:   client,
+				logger:   slog.With(slog.String("domain", domain)),
+				manager:  manager,
+				schedule: schedule,
+				store:    store,
+			}
+
 			// Start each issuer within the next minute, spread out so they don't all run together
 			delay := time.Duration(mathrand.Int64N(int64(time.Minute))) //nolint:gosec // Not security-sensitive use
-			schedule.RunIn(delay, func() {
-				// This is still a placeholder, for later PRs to expand on, issuing certs.
-				slog.Info("Starting Issuance", slog.String("domain", domain), slog.Bool("revoked", c.shouldRevoke()))
-			})
+			schedule.RunIn(delay, i.start)
 		}
 	}
 
