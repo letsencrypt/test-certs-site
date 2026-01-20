@@ -2,7 +2,7 @@ module github.com/letsencrypt/test-certs-site
 
 go 1.25
 
-require github.com/go-acme/lego/v4 v4.30.1
+require github.com/go-acme/lego/v4 v4.31.0
 
 require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
