@@ -6,11 +6,13 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"errors"
 	"log/slog"
 	mathrand "math/rand/v2"
 	"net/http"
 	"time"
 
+	legoAcme "github.com/go-acme/lego/v4/acme"
 	"github.com/go-acme/lego/v4/lego"
 	"github.com/go-acme/lego/v4/log"
 	"github.com/go-acme/lego/v4/registration"
@@ -76,6 +78,29 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 
 	crlClient := &http.Client{
 		Timeout: time.Minute,
+	}
+
+	// If we loaded an account from disk, verify it still exists on the server.
+	// This handles the case where the server was restarted (e.g., a local Pebble instance)
+	// or the CA wiped its accounts.
+	if user.reg != nil {
+		_, queryErr := client.Registration.QueryRegistration()
+		if queryErr != nil {
+			var prob *legoAcme.ProblemDetails
+			if errors.As(queryErr, &prob) && prob.HTTPStatus == http.StatusNotFound {
+				// Account is missing from the server. Register a new one below.
+				slog.Warn("ACME account missing from server, registering new account",
+					slog.String("directory", cfg.ACME.Directory),
+					slog.String("accountURI", user.reg.URI))
+				user.reg = nil
+			} else {
+				// CA may be temporarily down. Log a warning but don't block startup;
+				// certificate issuance jobs will retry on their own schedule.
+				slog.Warn("Could not verify ACME account with server, proceeding with stored account",
+					slog.String("directory", cfg.ACME.Directory),
+					slogErr(queryErr))
+			}
+		}
 	}
 
 	// Register if needed
