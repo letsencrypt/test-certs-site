@@ -140,8 +140,8 @@ func ensureRegistration(user *legoUser, client *lego.Client, cfg *config.Config,
 					slog.String("accountURI", user.reg.URI))
 				user.reg = nil
 			} else {
-				// CA may be temporarily down. Log a warning but don't block startup;
-				// certificate issuance jobs will retry on their own schedule.
+				// CA may be temporarily down. Log a warning but don't block startup:
+				// We must be able to start if the CA isn't working
 				slog.Warn("Could not verify ACME account with server, proceeding with stored account",
 					slog.String("directory", cfg.ACME.Directory),
 					slogErr(queryErr))
