@@ -1,4 +1,4 @@
-FROM golang:1.25.3-bookworm AS build
+FROM golang:1.26.1-trixie AS build
 
 WORKDIR /src
 
@@ -16,7 +16,7 @@ RUN --mount=type=cache,id=gomod,target=/go/pkg/mod \
     --mount=type=cache,id=gobuild,target=/root/.cache/go-build \
     go install .
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 COPY --from=build /go/bin/test-certs-site /test-certs-site
 
