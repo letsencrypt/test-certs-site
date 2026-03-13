@@ -1,8 +1,11 @@
 module github.com/letsencrypt/test-certs-site
 
-go 1.25
+go 1.25.0
 
-require github.com/go-acme/lego/v4 v4.32.0
+require (
+	github.com/go-acme/lego/v4 v4.32.0
+	golang.org/x/crypto/x509roots/fallback v0.0.0-20260311141749-982eaa62dfb7
+)
 
 require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
