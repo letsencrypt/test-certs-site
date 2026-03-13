@@ -31,6 +31,7 @@ jobs:
 
     - name: Build image
       env:
+        DOCKER_BUILDKIT: 1
         VERSION: ${{ steps.tag.outputs.version }}
       run: |
         docker build \
