@@ -1,0 +1,45 @@
+name: Publish Docker Image
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        persist-credentials: false
+
+    - name: Log in to GHCR
+      env:
+        USER: ${{ github.actor }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: printenv GITHUB_TOKEN | docker login ghcr.io -u "$USER" --password-stdin
+
+    - name: Extract tag
+      id: tag
+      run: echo "version=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
+    - name: Build image
+      env:
+        VERSION: ${{ steps.tag.outputs.version }}
+      run: |
+        docker build \
+          --label "org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}" \
+          --label "org.opencontainers.image.revision=${{ github.sha }}" \
+          --label "org.opencontainers.image.version=${VERSION}" \
+          --tag "ghcr.io/${{ github.repository }}:${VERSION}" \
+          --tag "ghcr.io/${{ github.repository }}:latest" \
+          .
+
+    - name: Push image
+      run: docker push --all-tags "ghcr.io/${{ github.repository }}"
