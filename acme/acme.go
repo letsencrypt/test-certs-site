@@ -6,11 +6,13 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"errors"
 	"log/slog"
 	mathrand "math/rand/v2"
 	"net/http"
 	"time"
 
+	legoAcme "github.com/go-acme/lego/v4/acme"
 	"github.com/go-acme/lego/v4/lego"
 	"github.com/go-acme/lego/v4/log"
 	"github.com/go-acme/lego/v4/registration"
@@ -78,21 +80,9 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 		Timeout: time.Minute,
 	}
 
-	// Register if needed
-	if user.reg == nil {
-		reg, err := client.Registration.Register(registration.RegisterOptions{
-			TermsOfServiceAgreed: cfg.ACME.TermsOfServiceAgreed,
-		})
-		if err != nil {
-			return err
-		}
-		user.reg = reg
-
-		err = store.StoreACME(cfg.ACME.Directory, reg.URI, user.key)
-		if err != nil {
-			return err
-		}
-		slog.Info("Created new ACME account", slog.String("directory", cfg.ACME.Directory), slog.String("User", user.reg.URI))
+	err = ensureRegistration(&user, client, cfg, store)
+	if err != nil {
+		return err
 	}
 
 	for _, site := range cfg.Sites {
@@ -130,4 +120,51 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 	}
 
 	return client.Challenge.SetTLSALPN01Provider(manager)
+}
+
+// ensureRegistration verifies the user's ACME account exists on the server, and registers
+// a new one if needed. If the server can't be reached, it logs a warning and proceeds
+// with the stored account to avoid blocking startup.
+func ensureRegistration(user *legoUser, client *lego.Client, cfg *config.Config, store *storage.Storage) error {
+	// If we loaded an account from disk, verify it still exists on the server.
+	// This handles the case where the server was restarted (e.g., a local Pebble instance)
+	// or the CA wiped its accounts.
+	if user.reg != nil {
+		_, queryErr := client.Registration.QueryRegistration()
+		if queryErr != nil {
+			var prob *legoAcme.ProblemDetails
+			if errors.As(queryErr, &prob) && prob.HTTPStatus == http.StatusNotFound {
+				// Account is missing from the server. Register a new one below.
+				slog.Warn("ACME account missing from server, registering new account",
+					slog.String("directory", cfg.ACME.Directory),
+					slog.String("accountURI", user.reg.URI))
+				user.reg = nil
+			} else {
+				// CA may be temporarily down. Log a warning but don't block startup:
+				// We must be able to start if the CA isn't working
+				slog.Warn("Could not verify ACME account with server, proceeding with stored account",
+					slog.String("directory", cfg.ACME.Directory),
+					slogErr(queryErr))
+			}
+		}
+	}
+
+	// Register if needed
+	if user.reg == nil {
+		reg, err := client.Registration.Register(registration.RegisterOptions{
+			TermsOfServiceAgreed: cfg.ACME.TermsOfServiceAgreed,
+		})
+		if err != nil {
+			return err
+		}
+		user.reg = reg
+
+		err = store.StoreACME(cfg.ACME.Directory, reg.URI, user.key)
+		if err != nil {
+			return err
+		}
+		slog.Info("Created new ACME account", slog.String("directory", cfg.ACME.Directory), slog.String("User", user.reg.URI))
+	}
+
+	return nil
 }
