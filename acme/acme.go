@@ -80,6 +80,52 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 		Timeout: time.Minute,
 	}
 
+	err = ensureRegistration(&user, client, cfg, store)
+	if err != nil {
+		return err
+	}
+
+	for _, site := range cfg.Sites {
+		for domain, c := range map[string]checker{
+			site.Domains.Valid: &valid{
+				ari:    client.Certificate,
+				logger: slog.With(slog.String("domain", site.Domains.Valid)),
+			},
+			site.Domains.Revoked: &revoked{
+				http:          crlClient,
+				logger:        slog.With(slog.String("domain", site.Domains.Revoked)),
+				checkInterval: time.Hour,
+			},
+			site.Domains.Expired: expired{},
+		} {
+			i := issuer{
+				checker: c,
+
+				domain:   domain,
+				issuerCN: site.IssuerCN,
+				keyType:  site.KeyType,
+				profile:  site.Profile,
+
+				client:   client,
+				logger:   slog.With(slog.String("domain", domain)),
+				manager:  manager,
+				schedule: schedule,
+				store:    store,
+			}
+
+			// Start each issuer within the next minute, spread out so they don't all run together
+			delay := time.Duration(mathrand.Int64N(int64(time.Minute))) //nolint:gosec // Not security-sensitive use
+			schedule.RunIn(delay, i.start)
+		}
+	}
+
+	return client.Challenge.SetTLSALPN01Provider(manager)
+}
+
+// ensureRegistration verifies the user's ACME account exists on the server, and registers
+// a new one if needed. If the server can't be reached, it logs a warning and proceeds
+// with the stored account to avoid blocking startup.
+func ensureRegistration(user *legoUser, client *lego.Client, cfg *config.Config, store *storage.Storage) error {
 	// If we loaded an account from disk, verify it still exists on the server.
 	// This handles the case where the server was restarted (e.g., a local Pebble instance)
 	// or the CA wiped its accounts.
@@ -120,39 +166,5 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 		slog.Info("Created new ACME account", slog.String("directory", cfg.ACME.Directory), slog.String("User", user.reg.URI))
 	}
 
-	for _, site := range cfg.Sites {
-		for domain, c := range map[string]checker{
-			site.Domains.Valid: &valid{
-				ari:    client.Certificate,
-				logger: slog.With(slog.String("domain", site.Domains.Valid)),
-			},
-			site.Domains.Revoked: &revoked{
-				http:          crlClient,
-				logger:        slog.With(slog.String("domain", site.Domains.Revoked)),
-				checkInterval: time.Hour,
-			},
-			site.Domains.Expired: expired{},
-		} {
-			i := issuer{
-				checker: c,
-
-				domain:   domain,
-				issuerCN: site.IssuerCN,
-				keyType:  site.KeyType,
-				profile:  site.Profile,
-
-				client:   client,
-				logger:   slog.With(slog.String("domain", domain)),
-				manager:  manager,
-				schedule: schedule,
-				store:    store,
-			}
-
-			// Start each issuer within the next minute, spread out so they don't all run together
-			delay := time.Duration(mathrand.Int64N(int64(time.Minute))) //nolint:gosec // Not security-sensitive use
-			schedule.RunIn(delay, i.start)
-		}
-	}
-
-	return client.Challenge.SetTLSALPN01Provider(manager)
+	return nil
 }
