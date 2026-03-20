@@ -11,22 +11,6 @@ import (
 	"github.com/letsencrypt/test-certs-site/config"
 )
 
-var (
-	customTextTemplate = `
-Text Template
-.Domain: {{ .Domain }}
-.Info.IssuerCN: {{ .Info.IssuerCN }}
-.Info.State: {{ .Info.State }}
-`
-
-	customHTMLTemplate = `
-<h1>HTML Template</h1>
-<p>.Domain: {{ .Domain }}</p>
-<p>.Info.IssuerCN: {{ .Info.IssuerCN }}</p>
-<p>.Info.State: {{ .Info.State }}</p>
-`
-)
-
 func TestNewHandler(t *testing.T) {
 	t.Parallel()
 
@@ -52,10 +36,25 @@ func TestNewHandler(t *testing.T) {
 	testTextTmpl := tmp + "/template.txt"
 	testHTMLTmpl := tmp + "/template.html"
 
+	customTextTemplate := `
+	Text Template
+	.Domain: {{ .Domain }}
+	.Info.IssuerCN: {{ .Info.IssuerCN }}
+	.Info.State: {{ .Info.State }}
+	`
+
 	err = os.WriteFile(testTextTmpl, []byte(customTextTemplate), 0o600)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	customHTMLTemplate := `
+	<h1>HTML Template</h1>
+	<p>.Domain: {{ .Domain }}</p>
+	<p>.Info.IssuerCN: {{ .Info.IssuerCN }}</p>
+	<p>.Info.State: {{ .Info.State }}</p>
+	`
+
 	err = os.WriteFile(testHTMLTmpl, []byte(customHTMLTemplate), 0o600)
 	if err != nil {
 		t.Fatal(err)
