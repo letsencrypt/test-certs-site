@@ -24,7 +24,23 @@ This is a standalone Go program. Once a 1.0 release is available, we will begin
 publishing releases.
 
 ```shell
-go run ./cmd/ -config config/test.json
+go run main.go -config [path/to/config.json]
+```
+
+See `config/config.go` for the configuration schema. See `config/testdata/test.json`
+or `integration/test-certs-site-config.json` for examples of valid configurations.
+
+## Testing locally
+
+We provide a `docker-compose.yml` file for local testing. It will automatically
+deploy [Pebble](https://github.com/letsencrypt/pebble), a test CA. Execute:
+```shell
+docker-compose up --build
+```
+
+Edit your `/etc/hosts` file to include the test certs addresses.
+```
+127.0.0.1 valid.tsc revoked.tsc expired.tsc
 ```
 
 ## Avoiding Incidents
