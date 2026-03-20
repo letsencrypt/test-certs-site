@@ -68,17 +68,19 @@ func loadTemplate(filename string, defaultTemplate string) (*template.Template, 
 	tmpl := defaultTemplate
 
 	if filename != "" {
-		file, err := os.ReadFile(filename)
+		file, err := os.ReadFile(filename) //nolint:gosec // Arbitrary file read is intended here
 		if err != nil {
 			return nil, fmt.Errorf("error loading template file: %w", err)
 		}
 
 		tmpl = string(file)
+	} else {
+		filename = "< built in >" // just for the error message below, if the built-in template fails to parse
 	}
 
 	parsed, err := template.New("homePage").Parse(tmpl)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing template: %w", err)
+		return nil, fmt.Errorf("error parsing template: '%s': %w", filename, err)
 	}
 
 	return parsed, nil

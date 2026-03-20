@@ -12,14 +12,14 @@ import (
 )
 
 var (
-	customTextTemplate string = `
+	customTextTemplate = `
 Text Template
 .Domain: {{ .Domain }}
 .Info.IssuerCN: {{ .Info.IssuerCN }}
 .Info.State: {{ .Info.State }}
 `
 
-	customHTMLTemplate string = `
+	customHTMLTemplate = `
 <h1>HTML Template</h1>
 <p>.Domain: {{ .Domain }}</p>
 <p>.Info.IssuerCN: {{ .Info.IssuerCN }}</p>
@@ -28,6 +28,8 @@ Text Template
 )
 
 func TestNewHandler(t *testing.T) {
+	t.Parallel()
+
 	testCfg := config.Config{
 		Sites: []config.Site{
 			{
@@ -50,11 +52,11 @@ func TestNewHandler(t *testing.T) {
 	testTextTmpl := tmp + "/template.txt"
 	testHTMLTmpl := tmp + "/template.html"
 
-	err = os.WriteFile(testTextTmpl, []byte(customTextTemplate), 0o644)
+	err = os.WriteFile(testTextTmpl, []byte(customTextTemplate), 0o600)
 	if err != nil {
 		t.Fatal(err)
 	}
-	err = os.WriteFile(testHTMLTmpl, []byte(customHTMLTemplate), 0o644)
+	err = os.WriteFile(testHTMLTmpl, []byte(customHTMLTemplate), 0o600)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -124,6 +126,7 @@ func TestNewHandler(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.domain, func(t *testing.T) {
+			t.Parallel()
 			request := httptest.NewRequest(http.MethodGet, test.url, nil)
 			request.TLS = &tls.ConnectionState{
 				ServerName: test.domain,
@@ -140,7 +143,7 @@ func TestNewHandler(t *testing.T) {
 			for _, bodyHas := range test.bodyHas {
 				if !strings.Contains(record.Body.String(), bodyHas) {
 					t.Log(record.Body.String())
-					t.Errorf("Body missing expected substring %q", test.bodyHas)
+					t.Errorf("Body missing expected substring %q", bodyHas)
 				}
 			}
 		})
