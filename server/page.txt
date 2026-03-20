@@ -1,8 +1,8 @@
-# {{.Domain}}
+# {{ .Domain }}
 
 ## Test Web Page
 
-This test website, {{.Domain}}, is intended for
+This test website, {{ .Domain }}, is intended for
 testing compatibility with Let's Encrypt certificates.
 
 It is using a certificate issued by {{ .Info.IssuerCN }}.

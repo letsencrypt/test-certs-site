@@ -6,6 +6,7 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/letsencrypt/test-certs-site/config"
@@ -28,7 +29,7 @@ type info struct {
 	State    string
 }
 
-func newHandler(cfg *config.Config) handler {
+func newHandler(cfg *config.Config) (handler, error) {
 	domains := make(map[string]info)
 
 	for _, site := range cfg.Sites {
@@ -46,11 +47,41 @@ func newHandler(cfg *config.Config) handler {
 		}
 	}
 
-	return handler{
-		htmlTemplate: template.Must(template.New("homePage").Parse(htmlTemplate)),
-		textTemplate: template.Must(template.New("homePage").Parse(textTemplate)),
-		domains:      domains,
+	html, err := loadTemplate(cfg.HTMLTemplate, htmlTemplate)
+	if err != nil {
+		return handler{}, err
 	}
+
+	text, err := loadTemplate(cfg.TextTemplate, textTemplate)
+	if err != nil {
+		return handler{}, err
+	}
+
+	return handler{
+		htmlTemplate: html,
+		textTemplate: text,
+		domains:      domains,
+	}, nil
+}
+
+func loadTemplate(filename string, defaultTemplate string) (*template.Template, error) {
+	tmpl := defaultTemplate
+
+	if filename != "" {
+		file, err := os.ReadFile(filename)
+		if err != nil {
+			return nil, fmt.Errorf("error loading template file: %w", err)
+		}
+
+		tmpl = string(file)
+	}
+
+	parsed, err := template.New("homePage").Parse(tmpl)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing template: %w", err)
+	}
+
+	return parsed, nil
 }
 
 type templateData struct {

@@ -21,9 +21,14 @@ func Run(ctx context.Context, cfg *config.Config, getCert GetCertificateFunc) er
 	// We want http requests to time out relatively quickly, as this server shouldn't be doing much.
 	const timeout = 5 * time.Second
 
+	handler, err := newHandler(cfg)
+	if err != nil {
+		return err
+	}
+
 	srv := http.Server{
 		Addr:    cfg.ListenAddr,
-		Handler: newHandler(cfg),
+		Handler: handler,
 
 		IdleTimeout:       timeout,
 		ReadHeaderTimeout: timeout,
