@@ -90,6 +90,12 @@ type Config struct {
 
 	// ACME client configuration.
 	ACME ACME
+
+	// HTMLTemplate overrides the default HTML webpage
+	HTMLTemplate string
+
+	// TextTemplate overrides the default plain text webpage
+	TextTemplate string
 }
 
 // Site configures a particular site.

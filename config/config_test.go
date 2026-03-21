@@ -42,7 +42,9 @@ func TestLoadConfig(t *testing.T) {
 			TermsOfServiceAgreed: true,
 		},
 
-		DataDir: "testdata/data_dir/",
+		DataDir:      "testdata/data_dir/",
+		HTMLTemplate: "testdata/template.html",
+		TextTemplate: "testdata/template.txt",
 	}
 
 	_, err := config.Load("non-existant.json")

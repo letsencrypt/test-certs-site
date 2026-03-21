@@ -27,5 +27,7 @@
     "directory": "https://localhost:14000/dir",
     "termsOfServiceAgreed": true
   },
-  "dataDir": "testdata/data_dir/"
+  "dataDir": "testdata/data_dir/",
+  "htmlTemplate": "testdata/template.html",
+  "textTemplate": "testdata/template.txt"
 }
