@@ -20,11 +20,32 @@ While this was built for Let's Encrypt, it should be usable by other ACME CAs.
 
 ## Running test-certs-site
 
-This is a standalone Go program. Once a 1.0 release is available, we will begin
-publishing releases.
+This is a standalone Go program.
 
 ```shell
-go run ./cmd/ -config config/test.json
+go run main.go -config [path/to/config.json]
+```
+
+See `config/config.go` for the configuration schema. See `config/testdata/test.json`
+or `integration/test-certs-site-config.json` for examples of valid configurations.
+
+## Testing locally
+
+We provide a `docker-compose.yml` file for local testing. It will automatically
+deploy [Pebble](https://github.com/letsencrypt/pebble), a test CA. Execute:
+```shell
+docker-compose up --build
+```
+
+Then, access one of the test sites.
+```shell
+curl -k --resolve revoked.tsc:5001:127.0.0.1 'https://revoked.tsc:5001/
+```
+
+If you want to access the sites from your browser, edit your `/etc/hosts` file to
+include the test certs addresses.
+```hosts
+127.0.0.1 valid.tsc revoked.tsc expired.tsc
 ```
 
 ## Avoiding Incidents
