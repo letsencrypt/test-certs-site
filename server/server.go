@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/letsencrypt/test-certs-site/config"
@@ -15,6 +16,34 @@ import (
 // The webserver will use it to obtain certificates, including fulfilling
 // ACME TLS-ALPN-01 challenges.
 type GetCertificateFunc func(info *tls.ClientHelloInfo) (*tls.Certificate, error)
+
+// tlsNoiseFilterHandler is a slog.Handler that drops "http: TLS handshake
+// error" messages. These are mostly internet-scanning noise and would
+// otherwise drown out useful log entries.
+type tlsNoiseFilterHandler struct {
+	slog.Handler
+}
+
+func (h tlsNoiseFilterHandler) Handle(ctx context.Context, r slog.Record) error {
+	if strings.HasPrefix(r.Message, "http: TLS handshake error") {
+		return nil
+	}
+	return h.Handler.Handle(ctx, r)
+}
+
+// wrapGetCertificate returns a GetCertificateFunc that logs any error returned
+// by fn via slog before propagating it. This is needed because the http server's
+// ErrorLog is filtered to drop TLS handshake noise (see tlsNoiseFilterHandler),
+// so errors from GetCertificate would otherwise be silently discarded.
+func wrapGetCertificate(fn GetCertificateFunc) GetCertificateFunc {
+	return func(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+		cert, err := fn(info)
+		if err != nil {
+			slog.Error("GetCertificate", "err", err, "serverName", info.ServerName)
+		}
+		return cert, err
+	}
+}
 
 // Run the server, until the context is canceled.
 func Run(ctx context.Context, cfg *config.Config, getCert GetCertificateFunc) error {
@@ -26,9 +55,15 @@ func Run(ctx context.Context, cfg *config.Config, getCert GetCertificateFunc) er
 		return err
 	}
 
+	// Route the http server's error log through a slog filter that drops
+	// TLS handshake noise (internet-scanning traffic).
+	filteredHandler := tlsNoiseFilterHandler{slog.Default().Handler()}
+	errorLog := slog.NewLogLogger(filteredHandler, slog.LevelError)
+
 	srv := http.Server{
-		Addr:    cfg.ListenAddr,
-		Handler: handler,
+		Addr:     cfg.ListenAddr,
+		Handler:  handler,
+		ErrorLog: errorLog,
 
 		IdleTimeout:       timeout,
 		ReadHeaderTimeout: timeout,
@@ -37,7 +72,7 @@ func Run(ctx context.Context, cfg *config.Config, getCert GetCertificateFunc) er
 
 		//nolint:gosec // This is an explicit TLS test site, so allow TLS1.0
 		TLSConfig: &tls.Config{
-			GetCertificate: getCert,
+			GetCertificate: wrapGetCertificate(getCert),
 			MinVersion:     tls.VersionTLS10,
 			NextProtos:     []string{"acme-tls/1"},
 		},
