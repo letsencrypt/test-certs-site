@@ -133,7 +133,7 @@ func ensureRegistration(user *legoUser, client *lego.Client, cfg *config.Config,
 		_, queryErr := client.Registration.QueryRegistration()
 		if queryErr != nil {
 			var prob *legoAcme.ProblemDetails
-			if errors.As(queryErr, &prob) && prob.HTTPStatus == http.StatusNotFound {
+			if errors.As(queryErr, &prob) && prob.Type == "urn:ietf:params:acme:error:accountDoesNotExist" {
 				// Account is missing from the server. Register a new one below.
 				slog.Warn("ACME account missing from server, registering new account",
 					slog.String("directory", cfg.ACME.Directory),
