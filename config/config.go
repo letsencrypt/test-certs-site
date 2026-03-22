@@ -96,6 +96,9 @@ type Config struct {
 
 	// TextTemplate overrides the default plain text webpage
 	TextTemplate string
+
+	// LogDebug enables debug level logs when set to true
+	LogDebug bool
 }
 
 // Site configures a particular site.

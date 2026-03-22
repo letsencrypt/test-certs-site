@@ -88,6 +88,16 @@ func isACME(info *tls.ClientHelloInfo) bool {
 
 // GetCertificate implements the interface required by tls.Config
 func (c *CertManager) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
+	cert, err := c.get(info)
+	if err != nil {
+		slog.Warn("getting certificate", slog.String("error", err.Error()))
+	}
+
+	return cert, err
+}
+
+// get is the core of GetCertificate, which wraps this for observability
+func (c *CertManager) get(info *tls.ClientHelloInfo) (*tls.Certificate, error) { //nolint:funcorder
 	sni := info.ServerName
 
 	c.mu.Lock()

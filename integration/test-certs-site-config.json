@@ -15,5 +15,6 @@
     "directory": "https://pebble:14000/dir",
     "termsOfServiceAgreed": true
   },
-  "dataDir": "/data"
+  "dataDir": "/data",
+  "logDebug": true
 }

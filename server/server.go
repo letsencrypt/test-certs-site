@@ -26,9 +26,12 @@ func Run(ctx context.Context, cfg *config.Config, getCert GetCertificateFunc) er
 		return err
 	}
 
+	logger := slog.NewLogLogger(slog.Default().Handler(), slog.LevelDebug)
+
 	srv := http.Server{
-		Addr:    cfg.ListenAddr,
-		Handler: handler,
+		Addr:     cfg.ListenAddr,
+		Handler:  handler,
+		ErrorLog: logger,
 
 		IdleTimeout:       timeout,
 		ReadHeaderTimeout: timeout,
