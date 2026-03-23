@@ -116,13 +116,13 @@ func (c *CertManager) get(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
 		return challengeCert, nil
 	}
 
-	cert, ok := c.certs[info.ServerName]
+	cert, ok := c.certs[sni]
 	if !ok {
 		return nil, fmt.Errorf("no certificate")
 	}
 
 	expired := time.Now().After(cert.Leaf.NotAfter)
-	shouldBeExpired, ok := c.expired[info.ServerName]
+	shouldBeExpired, ok := c.expired[sni]
 	if !ok {
 		return nil, fmt.Errorf("cert not in c.expired")
 	}
