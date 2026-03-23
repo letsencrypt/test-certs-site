@@ -41,20 +41,17 @@ func (u *legoUser) GetPrivateKey() crypto.PrivateKey {
 	return u.key
 }
 
-// New sets up the ACME client, registering it with the ACME server if one isn't present.
-func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedule, manager *certs.CertManager) error {
-	var user legoUser
-
+func setupLego(cfg *config.Config, store *storage.Storage, user legoUser) (*lego.Client, error) {
 	// Lego users can configure a custom logger by setting it in this global.
 	log.Logger = slog.NewLogLogger(slog.Default().Handler(), slog.LevelInfo)
 
 	// Try to load an existing ACME account
 	accountURI, acctKey, err := store.ReadACME(cfg.ACME.Directory)
 	if err != nil {
-		// No account, need to make a new one
+		// No account, need to make a new key
 		key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		user.key = key
 	} else {
@@ -67,22 +64,92 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 		slog.Info("Loaded ACME account", slog.String("directory", cfg.ACME.Directory), slog.String("User", user.reg.URI))
 	}
 
-	legoCfg := lego.NewConfig(&user)
-	legoCfg.CADirURL = cfg.ACME.Directory
+	client, err := newClient(&user, cfg.ACME.Directory)
+	if err != nil {
+		return nil, err
+	}
+
+	if user.reg != nil && !checkRegistration(&user, client, cfg) {
+		// We have an account, but the CA doesn't know about it. Reset user and client and re-register
+		user.reg = nil
+		client, err = newClient(&user, cfg.ACME.Directory)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if user.reg == nil {
+		err = register(&user, client, cfg, store)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return client, nil
+}
+
+func newClient(user *legoUser, directory string) (*lego.Client, error) {
+	legoCfg := lego.NewConfig(user)
+	legoCfg.CADirURL = directory
 	legoCfg.UserAgent = "test-certs-site/1.0"
 
-	client, err := lego.NewClient(legoCfg)
+	return lego.NewClient(legoCfg)
+}
+
+func register(user *legoUser, client *lego.Client, cfg *config.Config, store *storage.Storage) error {
+	reg, err := client.Registration.Register(registration.RegisterOptions{
+		TermsOfServiceAgreed: cfg.ACME.TermsOfServiceAgreed,
+	})
+	if err != nil {
+		return err
+	}
+	user.reg = reg
+
+	err = store.StoreACME(cfg.ACME.Directory, reg.URI, user.key)
+	if err != nil {
+		return err
+	}
+
+	slog.Info("Created new ACME account", slog.String("directory", cfg.ACME.Directory), slog.String("User", user.reg.URI))
+
+	return nil
+}
+
+// checkRegistration calls the ACME server to see if this account exists.
+func checkRegistration(user *legoUser, client *lego.Client, cfg *config.Config) bool {
+	_, queryErr := client.Registration.QueryRegistration()
+	if queryErr != nil {
+		var prob *legoAcme.ProblemDetails
+		if errors.As(queryErr, &prob) && prob.Type == "urn:ietf:params:acme:error:accountDoesNotExist" {
+			// Account is missing from the server.
+			slog.Warn("ACME account missing from server, registering new account",
+				slog.String("directory", cfg.ACME.Directory),
+				slog.String("accountURI", user.reg.URI))
+		} else {
+			slog.Warn("Got unexpected error while querying ACME account",
+				slog.String("directory", cfg.ACME.Directory),
+				slogErr(queryErr))
+		}
+
+		return false
+	}
+
+	slog.Info("Existing ACME account found", slog.String("accountURI", user.reg.URI))
+
+	return true
+}
+
+// New sets up the ACME client, registering it with the ACME server if one isn't present.
+func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedule, manager *certs.CertManager) error {
+	var user legoUser
+
+	client, err := setupLego(cfg, store, user)
 	if err != nil {
 		return err
 	}
 
 	crlClient := &http.Client{
 		Timeout: time.Minute,
-	}
-
-	err = ensureRegistration(&user, client, cfg, store)
-	if err != nil {
-		return err
 	}
 
 	for _, site := range cfg.Sites {
@@ -120,51 +187,4 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 	}
 
 	return client.Challenge.SetTLSALPN01Provider(manager)
-}
-
-// ensureRegistration verifies the user's ACME account exists on the server, and registers
-// a new one if needed. If the server can't be reached, it logs a warning and proceeds
-// with the stored account to avoid blocking startup.
-func ensureRegistration(user *legoUser, client *lego.Client, cfg *config.Config, store *storage.Storage) error {
-	// If we loaded an account from disk, verify it still exists on the server.
-	// This handles the case where the server was restarted (e.g., a local Pebble instance)
-	// or the CA wiped its accounts.
-	if user.reg != nil {
-		_, queryErr := client.Registration.QueryRegistration()
-		if queryErr != nil {
-			var prob *legoAcme.ProblemDetails
-			if errors.As(queryErr, &prob) && prob.HTTPStatus == http.StatusNotFound {
-				// Account is missing from the server. Register a new one below.
-				slog.Warn("ACME account missing from server, registering new account",
-					slog.String("directory", cfg.ACME.Directory),
-					slog.String("accountURI", user.reg.URI))
-				user.reg = nil
-			} else {
-				// CA may be temporarily down. Log a warning but don't block startup:
-				// We must be able to start if the CA isn't working
-				slog.Warn("Could not verify ACME account with server, proceeding with stored account",
-					slog.String("directory", cfg.ACME.Directory),
-					slogErr(queryErr))
-			}
-		}
-	}
-
-	// Register if needed
-	if user.reg == nil {
-		reg, err := client.Registration.Register(registration.RegisterOptions{
-			TermsOfServiceAgreed: cfg.ACME.TermsOfServiceAgreed,
-		})
-		if err != nil {
-			return err
-		}
-		user.reg = reg
-
-		err = store.StoreACME(cfg.ACME.Directory, reg.URI, user.key)
-		if err != nil {
-			return err
-		}
-		slog.Info("Created new ACME account", slog.String("directory", cfg.ACME.Directory), slog.String("User", user.reg.URI))
-	}
-
-	return nil
 }

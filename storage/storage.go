@@ -112,7 +112,7 @@ func (s *Storage) StoreACME(directory string, accountURI string, key *ecdsa.Priv
 	}
 
 	path := s.pathFor(url.PathEscape(directory), current, acmeAccountFilename)
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, certPerms) //nolint:gosec // Arbitrary file is not a risk here
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, keyPerms) //nolint:gosec // Arbitrary file is not a risk here
 	if err != nil {
 		return err
 	}
