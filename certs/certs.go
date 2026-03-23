@@ -90,7 +90,7 @@ func isACME(info *tls.ClientHelloInfo) bool {
 func (c *CertManager) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	cert, err := c.get(info)
 	if err != nil {
-		slog.Warn("getting certificate", slog.String("error", err.Error()))
+		slog.Warn("getting certificate", slog.String("error", err.Error()), slog.String("sni", info.ServerName))
 	}
 
 	return cert, err
@@ -100,13 +100,17 @@ func (c *CertManager) GetCertificate(info *tls.ClientHelloInfo) (*tls.Certificat
 func (c *CertManager) get(info *tls.ClientHelloInfo) (*tls.Certificate, error) { //nolint:funcorder
 	sni := info.ServerName
 
+	if sni == "" {
+		return nil, fmt.Errorf("no SNI provided")
+	}
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if isACME(info) {
 		challengeCert, ok := c.challengeCerts[sni]
 		if !ok {
-			return nil, fmt.Errorf("no challenge certificate found for %q", sni)
+			return nil, fmt.Errorf("no challenge certificate found")
 		}
 
 		return challengeCert, nil
@@ -114,21 +118,21 @@ func (c *CertManager) get(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
 
 	cert, ok := c.certs[info.ServerName]
 	if !ok {
-		return nil, fmt.Errorf("no certificate for %s", sni)
+		return nil, fmt.Errorf("no certificate")
 	}
 
 	expired := time.Now().After(cert.Leaf.NotAfter)
 	shouldBeExpired, ok := c.expired[info.ServerName]
 	if !ok {
-		return nil, fmt.Errorf("cert for %s not in c.expired", sni)
+		return nil, fmt.Errorf("cert not in c.expired")
 	}
 
 	if expired && !shouldBeExpired {
-		return nil, fmt.Errorf("certificate for %s is expired", sni)
+		return nil, fmt.Errorf("certificate is expired")
 	}
 
 	if !expired && shouldBeExpired {
-		return nil, fmt.Errorf("certificate for %s is not expired, but should be", sni)
+		return nil, fmt.Errorf("certificate is not expired, but should be")
 	}
 
 	return cert, nil
