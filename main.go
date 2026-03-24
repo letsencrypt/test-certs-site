@@ -21,7 +21,9 @@ import (
 )
 
 func run(args []string) error {
-	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+	logLevel := &slog.LevelVar{}
+	logLevel.Set(slog.LevelInfo)
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: logLevel})))
 
 	fs := flag.NewFlagSet(args[0], flag.ExitOnError)
 	cfgPath := fs.String("config", "config.json", "path to json config file")
@@ -38,6 +40,10 @@ func run(args []string) error {
 	cfg, err := config.Load(*cfgPath)
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
+	}
+
+	if cfg.LogDebug {
+		logLevel.Set(slog.LevelDebug)
 	}
 
 	store, err := storage.New(cfg.DataDir)
