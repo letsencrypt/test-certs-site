@@ -5,9 +5,9 @@
       "issuerCN": "Pebble Root CA",
       "keyType": "p256",
       "domains": {
-        "valid": "valid.tsc",
-        "expired": "expired.tsc",
-        "revoked": "revoked.tsc"
+        "valid": "valid.localhost",
+        "expired": "expired.localhost",
+        "revoked": "revoked.localhost"
       }
     }
   ],
