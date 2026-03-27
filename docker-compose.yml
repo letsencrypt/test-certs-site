@@ -14,9 +14,9 @@ services:
     networks:
       testnet:
         aliases:
-          - valid.tsc
-          - revoked.tsc
-          - expired.tsc
+          - valid.localhost
+          - revoked.localhost
+          - expired.localhost
 
   pebble:
     image: ghcr.io/letsencrypt/pebble

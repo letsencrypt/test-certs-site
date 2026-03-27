@@ -38,14 +38,23 @@ docker-compose up --build
 ```
 
 Then, access one of the test sites.
+
+They are available on:
+ * https://valid.localhost:5001/
+ * https://revoked.localhost:5001/
+ * https://expired.localhost:5001/
+
+These URLs may work immediately, but if they don't resolve on your system, you
+can get curl to resolve them:
+
 ```shell
-curl -k --resolve revoked.tsc:5001:127.0.0.1 'https://revoked.tsc:5001/
+curl -k --resolve revoked.localhost:5001:127.0.0.1 'https://revoked.localhost:5001/
 ```
 
 If you want to access the sites from your browser, edit your `/etc/hosts` file to
 include the test certs addresses.
 ```hosts
-127.0.0.1 valid.tsc revoked.tsc expired.tsc
+127.0.0.1 valid.localhost revoked.localhost expired.localhost
 ```
 
 ## Avoiding Incidents
@@ -55,7 +64,7 @@ well as the complexity of our existing solution using off-the-shelf tools.
 
 Some categories of incidents we've observed include:
  
-* Allowing certificates to expire incorrectly, for the valid and revoked .
+* Allowing certificates to expire incorrectly, for the valid and revoked sites.
 * Serving unrevoked certificates on the revoked demonstration sites.
 
 A server with ACME integration is the most reliable way to ensure certificates

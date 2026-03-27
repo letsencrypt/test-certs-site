@@ -102,7 +102,7 @@ func checkCert(serverName string, root []byte, insecure bool) (time.Time, error)
 }
 
 func checkAll(root []byte) (time.Time, time.Time, time.Time, error) {
-	valid, err := checkCert("valid.tsc", root, false)
+	valid, err := checkCert("valid.localhost", root, false)
 	if err != nil {
 		return time.Time{}, time.Time{}, time.Time{}, fmt.Errorf("error checking valid certificate: %w", err)
 	}
@@ -111,7 +111,7 @@ func checkAll(root []byte) (time.Time, time.Time, time.Time, error) {
 		return time.Time{}, time.Time{}, time.Time{}, fmt.Errorf("valid cert expired: %s", valid)
 	}
 
-	revoked, err := checkCert("revoked.tsc", root, false)
+	revoked, err := checkCert("revoked.localhost", root, false)
 	if err != nil {
 		return time.Time{}, time.Time{}, time.Time{}, fmt.Errorf("error checking revoked certificate: %w", err)
 	}
@@ -120,7 +120,7 @@ func checkAll(root []byte) (time.Time, time.Time, time.Time, error) {
 		return time.Time{}, time.Time{}, time.Time{}, fmt.Errorf("revoked cert expired: %s", revoked)
 	}
 
-	expired, err := checkCert("expired.tsc", root, true)
+	expired, err := checkCert("expired.localhost", root, true)
 	if err != nil {
 		return time.Time{}, time.Time{}, time.Time{}, fmt.Errorf("error checking expired certificate: %w", err)
 	}
