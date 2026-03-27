@@ -48,7 +48,7 @@ These URLs may work immediately, but if they don't resolve on your system, you
 can get curl to resolve them:
 
 ```shell
-curl -k --resolve revoked.localhost:5001:127.0.0.1 'https://revoked.localhost:5001/
+curl -k --resolve revoked.localhost:5001:127.0.0.1 'https://revoked.localhost:5001/'
 ```
 
 If you want to access the sites from your browser, edit your `/etc/hosts` file to
