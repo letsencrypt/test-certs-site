@@ -80,6 +80,9 @@ type Config struct {
 	// ListenAddr for the demo site to listen on. Eg, ":443".
 	ListenAddr string
 
+	// DebugAddr is the listen address for metrics and pprof
+	DebugAddr string
+
 	// Sites is a list of sites to host.
 	Sites []Site
 

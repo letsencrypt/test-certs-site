@@ -1,5 +1,6 @@
 {
   "listenAddr": "localhost:8443",
+  "debugAddr": "localhost:9876",
 
   "sites": [
     {
