@@ -77,7 +77,7 @@ func (r *revoked) checkReady(ctx context.Context, cert, issuer *x509.Certificate
 	// Wait for a delay to allow revocation information to propagate
 	delayUntil := cert.NotBefore.Add(r.delay)
 	if now.Before(delayUntil) {
-		r.logger.Info("Waiting for certificate to be revoked", slog.Time("at", delayUntil))
+		r.logger.Info("Delaying before using revoked certificate", slog.Time("at", delayUntil))
 
 		return delayUntil, nil
 	}
