@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/letsencrypt/test-certs-site/config"
 )
@@ -42,9 +43,11 @@ func TestLoadConfig(t *testing.T) {
 			TermsOfServiceAgreed: true,
 		},
 
-		DataDir:      "testdata/data_dir/",
-		HTMLTemplate: "testdata/template.html",
-		TextTemplate: "testdata/template.txt",
+		DataDir:          "testdata/data_dir/",
+		HTMLTemplate:     "testdata/template.html",
+		TextTemplate:     "testdata/template.txt",
+		RevokeDelay:      config.Duration(time.Hour),
+		CRLCheckInterval: config.Duration(time.Minute),
 	}
 
 	_, err := config.Load("non-existant.json")
