@@ -50,27 +50,43 @@ func TestCheckRevoked(t *testing.T) {
 		http:          server.Client(),
 		logger:        slog.Default(),
 		checkInterval: time.Minute,
+		delay:         time.Hour,
 	}
 
 	if !r.shouldRevoke() {
 		t.Fatal("revoked certs should revoke")
 	}
 
+	now := time.Now()
+
 	readyTime, err := r.checkReady(t.Context(), &x509.Certificate{
+		NotBefore: now,
+		NotAfter:  now.Add(time.Hour),
+	}, caCert)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if readyTime.Before(now.Add(r.delay)) {
+		t.Fatalf("should have waited for revocation delay, got %v", readyTime)
+	}
+
+	readyTime, err = r.checkReady(t.Context(), &x509.Certificate{
 		SerialNumber:          big.NewInt(1111),
-		NotAfter:              time.Now().Add(time.Hour),
+		NotBefore:             now.Add(-r.delay),
+		NotAfter:              now.Add(time.Hour),
 		CRLDistributionPoints: []string{server.URL + crlPath},
 	}, caCert)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if readyTime.Before(time.Now()) {
+	if readyTime.Before(now) {
 		t.Fatal("1111 isn't in CRL, should not be ready")
 	}
 
 	readyTime, err = r.checkReady(t.Context(), &x509.Certificate{
 		SerialNumber:          big.NewInt(12345),
-		NotAfter:              time.Now().Add(time.Hour),
+		NotBefore:             now.Add(-r.delay),
+		NotAfter:              now.Add(time.Hour),
 		CRLDistributionPoints: []string{server.URL + crlPath},
 	}, caCert)
 	if err != nil {
