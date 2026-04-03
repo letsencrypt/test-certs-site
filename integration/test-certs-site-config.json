@@ -16,5 +16,7 @@
     "termsOfServiceAgreed": true
   },
   "dataDir": "/data",
-  "logDebug": true
+  "logDebug": true,
+  "revokeDelay": "1s",
+  "CRLCheckInterval": "1s"
 }

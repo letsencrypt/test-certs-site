@@ -16,6 +16,7 @@ type revoked struct {
 	logger *slog.Logger
 
 	checkInterval time.Duration
+	delay         time.Duration
 }
 
 func (r *revoked) checkCRL(ctx context.Context, cert, issuer *x509.Certificate) (bool, error) {
@@ -68,19 +69,28 @@ func (r *revoked) checkCRL(ctx context.Context, cert, issuer *x509.Certificate) 
 }
 
 func (r *revoked) checkReady(ctx context.Context, cert, issuer *x509.Certificate) (time.Time, error) {
-	if time.Now().After(cert.NotAfter) {
+	now := time.Now()
+	if now.After(cert.NotAfter) {
 		return time.Time{}, fmt.Errorf("certificate expired: %s", cert.NotAfter.Format(time.DateTime))
+	}
+
+	// Wait for a delay to allow revocation information to propagate
+	delayUntil := cert.NotBefore.Add(r.delay)
+	if now.Before(delayUntil) {
+		r.logger.Info("Delaying before using revoked certificate", slog.Time("at", delayUntil))
+
+		return delayUntil, nil
 	}
 
 	isRevoked, err := r.checkCRL(ctx, cert, issuer)
 	if err != nil {
 		r.logger.Warn("Error checking CRL", slogErr(err))
 
-		return time.Now().Add(r.checkInterval), nil
+		return now.Add(r.checkInterval), nil
 	}
 
 	if !isRevoked {
-		retryAt := time.Now().Add(r.checkInterval)
+		retryAt := now.Add(r.checkInterval)
 		r.logger.Info("Certificate not yet revoked: will recheck", slog.Time("at", retryAt))
 
 		return retryAt, nil

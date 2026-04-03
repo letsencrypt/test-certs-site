@@ -152,6 +152,18 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 		Timeout: time.Minute,
 	}
 
+	crlCheckInterval := time.Duration(cfg.CRLCheckInterval)
+	if crlCheckInterval == 0 {
+		// An hour is a reasonable approximation of how long it might take for a new CRL to be issued.
+		crlCheckInterval = time.Hour
+	}
+
+	revokeDelay := time.Duration(cfg.RevokeDelay)
+	if revokeDelay == 0 {
+		// 25 hours is long enough for CRLite and Windows CRL caches, including 1h backdating.
+		revokeDelay = 25 * time.Hour //nolint:mnd
+	}
+
 	for _, site := range cfg.Sites {
 		for domain, c := range map[string]checker{
 			site.Domains.Valid: &valid{
@@ -161,7 +173,8 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 			site.Domains.Revoked: &revoked{
 				http:          crlClient,
 				logger:        slog.With(slog.String("domain", site.Domains.Revoked)),
-				checkInterval: time.Hour,
+				checkInterval: crlCheckInterval,
+				delay:         revokeDelay,
 			},
 			site.Domains.Expired: expired{},
 		} {

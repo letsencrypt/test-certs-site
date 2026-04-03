@@ -99,6 +99,12 @@ type Config struct {
 
 	// LogDebug enables debug level logs when set to true
 	LogDebug bool
+
+	// RevokeDelay wait to use a revoked certificate, from the certificate's NotBefore time.
+	RevokeDelay Duration
+
+	// CRLCheckInterval is the re-checking interval for CRLs
+	CRLCheckInterval Duration
 }
 
 // Site configures a particular site.

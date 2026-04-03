@@ -29,5 +29,7 @@
   },
   "dataDir": "testdata/data_dir/",
   "htmlTemplate": "testdata/template.html",
-  "textTemplate": "testdata/template.txt"
+  "textTemplate": "testdata/template.txt",
+  "revokeDelay": "1h",
+  "CRLCheckInterval": "1m"
 }
