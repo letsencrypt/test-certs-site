@@ -63,7 +63,7 @@ func newHandler(cfg *config.Config, registry prometheus.Registerer) (http.Handle
 
 	counter := promauto.With(registry).NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "http_requests",
+			Name: "http_requests_total",
 			Help: "HTTP Requests by status",
 		},
 		[]string{"code"},

@@ -59,7 +59,7 @@ func New(ctx context.Context, debugAddr string) prometheus.Registerer {
 	}()
 
 	go func() {
-		slog.Info("Debug server listening", "debugAddr", debugAddr)
+		slog.Info("Debug server listening", slog.String("debugAddr", debugAddr))
 
 		err := srv.ListenAndServe()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
