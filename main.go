@@ -15,6 +15,7 @@ import (
 	"github.com/letsencrypt/test-certs-site/config"
 	"github.com/letsencrypt/test-certs-site/scheduler"
 	"github.com/letsencrypt/test-certs-site/server"
+	"github.com/letsencrypt/test-certs-site/stats"
 	"github.com/letsencrypt/test-certs-site/storage"
 
 	_ "golang.org/x/crypto/x509roots/fallback" // Include fallback roots for talking to ACME server
@@ -59,6 +60,9 @@ func run(args []string) error {
 	// When this context is canceled, the scheduler running jobs and the server will exit
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
+
+	registry := stats.New(ctx, cfg.DebugAddr)
+	_ = registry // TODO: pass to components that export metrics
 
 	schedule := scheduler.New(ctx)
 

@@ -1,5 +1,6 @@
 {
   "listenAddr": ":5001",
+  "debugAddr": ":9001",
   "sites": [
     {
       "issuerCN": "Pebble Root CA",

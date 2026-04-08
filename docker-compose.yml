@@ -11,6 +11,7 @@ services:
       - pebble
     ports:
       - "5001:5001"
+      - "9001:9001"
     networks:
       testnet:
         aliases:
