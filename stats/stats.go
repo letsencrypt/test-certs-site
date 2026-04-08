@@ -17,7 +17,7 @@ import (
 
 // New creates a Prometheus registry and listens on debugAddr if non-empty
 // debugAddr exposes /metrics and pprof
-func New(ctx context.Context, debugAddr string) prometheus.Registerer {
+func New(ctx context.Context, debugAddr string) *prometheus.Registry {
 	registry := prometheus.NewRegistry()
 
 	registry.MustRegister(collectors.NewGoCollector())
