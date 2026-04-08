@@ -62,7 +62,6 @@ func run(args []string) error {
 	defer cancel()
 
 	registry := stats.New(ctx, cfg.DebugAddr)
-	_ = registry // TODO: pass to components that export metrics
 
 	schedule := scheduler.New(ctx)
 
@@ -71,7 +70,7 @@ func run(args []string) error {
 		return err
 	}
 
-	return server.Run(ctx, cfg, certManager.GetCertificate)
+	return server.Run(ctx, cfg, registry, certManager.GetCertificate)
 }
 
 func main() {

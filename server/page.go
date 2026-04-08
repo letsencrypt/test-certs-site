@@ -9,6 +9,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"github.com/letsencrypt/test-certs-site/config"
 )
 
@@ -29,7 +33,7 @@ type info struct {
 	State    string
 }
 
-func newHandler(cfg *config.Config) (handler, error) {
+func newHandler(cfg *config.Config, registry prometheus.Registerer) (http.HandlerFunc, error) {
 	domains := make(map[string]info)
 
 	for _, site := range cfg.Sites {
@@ -49,19 +53,27 @@ func newHandler(cfg *config.Config) (handler, error) {
 
 	html, err := loadTemplate(cfg.HTMLTemplate, htmlTemplate)
 	if err != nil {
-		return handler{}, err
+		return nil, err
 	}
 
 	text, err := loadTemplate(cfg.TextTemplate, textTemplate)
 	if err != nil {
-		return handler{}, err
+		return nil, err
 	}
 
-	return handler{
+	counter := promauto.With(registry).NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "http_requests",
+			Help: "HTTP Requests by status",
+		},
+		[]string{"code"},
+	)
+
+	return promhttp.InstrumentHandlerCounter(counter, handler{
 		htmlTemplate: html,
 		textTemplate: text,
 		domains:      domains,
-	}, nil
+	}), nil
 }
 
 func loadTemplate(filename string, defaultTemplate string) (*template.Template, error) {

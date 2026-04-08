@@ -27,7 +27,7 @@ func TestNewHandler(t *testing.T) {
 		},
 	}
 
-	defaultHandler, err := newHandler(&testCfg)
+	defaultHandler, err := newHandler(&testCfg, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,14 +62,14 @@ func TestNewHandler(t *testing.T) {
 
 	testCfg.TextTemplate = testTextTmpl
 	testCfg.HTMLTemplate = testHTMLTmpl
-	customHandler, err := newHandler(&testCfg)
+	customHandler, err := newHandler(&testCfg, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	tests := []struct {
 		domain  string
-		handler handler
+		handler http.HandlerFunc
 		url     string
 		bodyHas []string
 	}{

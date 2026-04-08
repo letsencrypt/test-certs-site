@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+
 	"github.com/letsencrypt/test-certs-site/config"
 )
 
@@ -17,11 +19,11 @@ import (
 type GetCertificateFunc func(info *tls.ClientHelloInfo) (*tls.Certificate, error)
 
 // Run the server, until the context is canceled.
-func Run(ctx context.Context, cfg *config.Config, getCert GetCertificateFunc) error {
+func Run(ctx context.Context, cfg *config.Config, registry prometheus.Registerer, getCert GetCertificateFunc) error {
 	// We want http requests to time out relatively quickly, as this server shouldn't be doing much.
 	const timeout = 5 * time.Second
 
-	handler, err := newHandler(cfg)
+	handler, err := newHandler(cfg, registry)
 	if err != nil {
 		return err
 	}
