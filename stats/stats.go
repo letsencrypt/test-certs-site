@@ -22,7 +22,7 @@ func New(ctx context.Context, debugAddr string) *prometheus.Registry {
 
 	registry.MustRegister(collectors.NewGoCollector())
 	registry.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
-	registry.MustRegister(version.NewCollector("test-certs-site"))
+	registry.MustRegister(version.NewCollector("test_certs_site"))
 
 	if debugAddr == "" {
 		slog.Info("No debug listen address specified")
