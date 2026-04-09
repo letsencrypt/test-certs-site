@@ -14,6 +14,7 @@ func TestLoadConfig(t *testing.T) {
 	t.Parallel()
 	expected := config.Config{
 		ListenAddr: "localhost:8443",
+		DebugAddr:  "localhost:9876",
 
 		Sites: []config.Site{
 			{

@@ -174,10 +174,40 @@ func waitRenew(root []byte) error {
 	}
 }
 
+// checkMetrics verifies the debug server's /metrics endpoint is reachable
+// and exposes Go runtime metrics.
+func checkMetrics() error {
+	resp, err := http.Get("http://localhost:9001/metrics")
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	if !bytes.Contains(body, []byte("go_goroutines")) {
+		return fmt.Errorf("metrics body missing go_goroutines: %s", string(body))
+	}
+
+	return nil
+}
+
 // TestIntegration verifies that test-certs-site is working properly.
 // It assumes that test-certs-site and pebble are running with the configurations
 // in this directory.
 func TestPebbleIntegration(t *testing.T) {
+	err := checkMetrics()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	root, err := getPebbleRoot()
 	if err != nil {
 		t.Fatal(err)
