@@ -33,13 +33,7 @@ integration test config is generated at runtime by `integration/configgen`.
 ## Testing locally
 
 We provide a `docker-compose.yml` file for local testing. It will automatically
-deploy [Pebble](https://github.com/letsencrypt/pebble), a test CA.
-
-Pebble assigns a random CN like `Pebble Root CA <hex>` to its root on every
-startup, and test-certs-site refuses to issue if the chain doesn't end at the
-configured `issuerCN`. A `configgen` sidecar fetches the actual root CN from
-Pebble at startup and writes the test-certs-site config to a shared volume,
-so a single command brings everything up:
+deploy [Pebble](https://github.com/letsencrypt/pebble), a test CA. Execute:
 
 ```shell
 docker compose up --build
