@@ -115,6 +115,11 @@ type Site struct {
 	// IssuerCN that the certificate chain must end in.
 	IssuerCN string
 
+	// IssuerO that the certificate chain must end in. Optional.
+	// If set, the topmost certificate's Issuer Organization must contain
+	// this value in addition to matching IssuerCN.
+	IssuerO string
+
 	// KeyType to use for this site. Should be "p256" or "rsa2048".
 	KeyType string
 

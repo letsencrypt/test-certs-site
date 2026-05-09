@@ -183,6 +183,7 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 
 				domain:   domain,
 				issuerCN: site.IssuerCN,
+				issuerO:  site.IssuerO,
 				keyType:  site.KeyType,
 				profile:  site.Profile,
 

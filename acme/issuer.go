@@ -4,8 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"log/slog"
+	"slices"
 	"time"
 
 	"github.com/go-acme/lego/v4/certificate"
@@ -21,6 +23,7 @@ type issuer struct {
 
 	domain   string
 	issuerCN string
+	issuerO  string
 	keyType  string
 	profile  string
 
@@ -134,6 +137,16 @@ func (i *issuer) issueNext() (tls.Certificate, error) {
 		return tls.Certificate{}, fmt.Errorf("could not obtain certificate: %w", err)
 	}
 
+	// Lego silently falls back to the CA's default chain when no alternate
+	// chain matches PreferredChain, and PreferredChain only matches Issuer
+	// CN. We must never serve the wrong chain on this site, so reject the
+	// certificate if the chain doesn't end at the expected issuer (matched
+	// on both CN and, if configured, Organization).
+	err = verifyIssuerChain(resp.Certificate, i.issuerCN, i.issuerO)
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("could not verify issuer chain: %w", err)
+	}
+
 	if i.shouldRevoke() {
 		// Revoke with reason keyCompromise so browsers actually process this revocation
 		reasonKeyCompromise := uint(1)
@@ -163,4 +176,49 @@ func (i *issuer) takeNext() error {
 	}
 
 	return i.manager.LoadCertificate(i.domain)
+}
+
+// verifyIssuerChain checks that the topmost certificate in the PEM bundle is
+// issued by issuerCN, and (if non-empty) by issuerO. The bundle returned by
+// Lego does not contain the root, so the top certificate is typically the
+// intermediate, and its Issuer fields name the root.
+func verifyIssuerChain(bundle []byte, issuerCN, issuerO string) error {
+	var top *x509.Certificate
+
+	rest := bundle
+	for {
+		var block *pem.Block
+
+		block, rest = pem.Decode(rest)
+		if block == nil {
+			break
+		}
+
+		if block.Type != "CERTIFICATE" {
+			continue
+		}
+
+		cert, err := x509.ParseCertificate(block.Bytes)
+		if err != nil {
+			return fmt.Errorf("parsing certificate in chain: %w", err)
+		}
+
+		top = cert
+	}
+
+	if top == nil {
+		return fmt.Errorf("no certificates found in chain")
+	}
+
+	if top.Issuer.CommonName != issuerCN {
+		return fmt.Errorf("chain does not end at expected issuer CN %q: top certificate issued by CN %q",
+			issuerCN, top.Issuer.CommonName)
+	}
+
+	if issuerO != "" && !slices.Contains(top.Issuer.Organization, issuerO) {
+		return fmt.Errorf("chain does not end at expected issuer O %q: top certificate issued by O %v",
+			issuerO, top.Issuer.Organization)
+	}
+
+	return nil
 }

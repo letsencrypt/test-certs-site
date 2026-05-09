@@ -2,13 +2,15 @@ services:
   test-certs-site:
     build: .
     volumes:
-      - ./integration/test-certs-site-config.json:/test-certs-site-config.json
+      - test-certs-site-config:/config:ro
       - ./integration/pebble.minica.pem:/pebble.minica.pem
       - test-certs-data:/data
     environment:
       LEGO_CA_CERTIFICATES: /pebble.minica.pem
+    command: ["/test-certs-site", "-config", "/config/test-certs-site-config.json"]
     depends_on:
-      - pebble
+      configgen:
+        condition: service_completed_successfully
     ports:
       - "5001:5001"
       - "9001:9001"
@@ -18,6 +20,22 @@ services:
           - valid.localhost
           - revoked.localhost
           - expired.localhost
+
+  configgen:
+    build:
+      context: .
+      dockerfile: integration/configgen/Dockerfile
+    volumes:
+      - ./integration/pebble.minica.pem:/pebble.minica.pem:ro
+      - test-certs-site-config:/config
+    command:
+      - "-roots-url=https://pebble:15000/roots/0"
+      - "-minica=/pebble.minica.pem"
+      - "-output=/config/test-certs-site-config.json"
+    depends_on:
+      - pebble
+    networks:
+      - testnet
 
   pebble:
     image: ghcr.io/letsencrypt/pebble
@@ -37,3 +55,4 @@ networks:
 
 volumes:
   test-certs-data:
+  test-certs-site-config:
