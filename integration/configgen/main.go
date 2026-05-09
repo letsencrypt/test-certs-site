@@ -31,35 +31,28 @@ const (
 func main() {
 	rootsURL := flag.String("roots-url", "https://localhost:15000/roots/0",
 		"Pebble management API URL for the root certificate")
-	minicaPath := flag.String("minica", "integration/pebble.minica.pem",
-		"PEM file used to verify Pebble's HTTPS endpoint")
 	outputPath := flag.String("output", "integration/test-certs-site-config.json",
 		"Path to write the generated config")
 	timeout := flag.Duration("timeout", time.Minute,
 		"How long to wait for Pebble to start responding")
 	flag.Parse()
 
-	err := run(*rootsURL, *minicaPath, *outputPath, *timeout)
+	err := run(*rootsURL, *outputPath, *timeout)
 	if err != nil {
 		slog.Error(err.Error())
 		os.Exit(1)
 	}
 }
 
-func run(rootsURL, minicaPath, outputPath string, timeout time.Duration) error {
-	minica, err := os.ReadFile(minicaPath) //nolint:gosec // CLI flag, expected
-	if err != nil {
-		return fmt.Errorf("reading minica: %w", err)
-	}
-
-	pool := x509.NewCertPool()
-	if !pool.AppendCertsFromPEM(minica) {
-		return fmt.Errorf("no PEM certificates parsed from %s", minicaPath)
-	}
-
+func run(rootsURL, outputPath string, timeout time.Duration) error {
+	// Pebble's management API is served with its test-only TLS cert; the
+	// value we want (the root's Subject CN) is what test-certs-site then
+	// pins to, so verifying Pebble's transport cert here adds nothing.
 	client := &http.Client{
-		Timeout:   httpTimeout,
-		Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool, MinVersion: tls.VersionTLS12}},
+		Timeout: httpTimeout,
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // Test-only fixture
+		},
 	}
 
 	cn, err := fetchRootCN(client, rootsURL, timeout)

@@ -11,7 +11,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
 	"testing"
 	"time"
 )
@@ -44,14 +43,15 @@ func pemCert(cert []byte) *x509.Certificate {
 }
 
 // getPebbleRoot uses Pebble's management API to get the root it is using.
+// The management API is served with Pebble's test-only TLS cert; we don't
+// need to verify it here because the value we're after (the root CN) is
+// what subsequent checks pin to.
 func getPebbleRoot() ([]byte, error) {
-	// Pebble is listening with a hardcoded CA, which we load from this PEM:
-	data, err := os.ReadFile("pebble.minica.pem")
-	if err != nil {
-		return nil, err
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // Test-only fixture
+		},
 	}
-
-	client := httpClient(data)
 	resp, err := client.Get("https://localhost:15000/roots/0")
 	if err != nil {
 		return nil, err

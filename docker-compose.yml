@@ -3,10 +3,10 @@ services:
     build: .
     volumes:
       - test-certs-site-config:/config:ro
-      - ./integration/pebble.minica.pem:/pebble.minica.pem
+      - pebble-certs:/pebble-certs:ro
       - test-certs-data:/data
     environment:
-      LEGO_CA_CERTIFICATES: /pebble.minica.pem
+      LEGO_CA_CERTIFICATES: /pebble-certs/pebble.minica.pem
     command: ["/test-certs-site", "-config", "/config/test-certs-site-config.json"]
     depends_on:
       configgen:
@@ -26,11 +26,9 @@ services:
       context: .
       dockerfile: integration/configgen/Dockerfile
     volumes:
-      - ./integration/pebble.minica.pem:/pebble.minica.pem:ro
       - test-certs-site-config:/config
     command:
       - "-roots-url=https://pebble:15000/roots/0"
-      - "-minica=/pebble.minica.pem"
       - "-output=/config/test-certs-site-config.json"
     depends_on:
       - pebble
@@ -42,6 +40,7 @@ services:
     command: -config /pebble-config.json
     volumes:
       - ./integration/pebble-config.json:/pebble-config.json
+      - pebble-certs:/test/certs
     ports:
       - "14000:14000"
       - "15000:15000"
@@ -56,3 +55,4 @@ networks:
 volumes:
   test-certs-data:
   test-certs-site-config:
+  pebble-certs:
