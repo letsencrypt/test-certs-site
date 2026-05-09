@@ -45,9 +45,7 @@ func main() {
 }
 
 func run(rootsURL, outputPath string, timeout time.Duration) error {
-	// Pebble's management API is served with its test-only TLS cert; the
-	// value we want (the root's Subject CN) is what test-certs-site then
-	// pins to, so verifying Pebble's transport cert here adds nothing.
+	// Don't validate Pebble's cert, so we can avoid hardcoding its test root
 	client := &http.Client{
 		Timeout: httpTimeout,
 		Transport: &http.Transport{

@@ -43,10 +43,8 @@ func pemCert(cert []byte) *x509.Certificate {
 }
 
 // getPebbleRoot uses Pebble's management API to get the root it is using.
-// The management API is served with Pebble's test-only TLS cert; we don't
-// need to verify it here because the value we're after (the root CN) is
-// what subsequent checks pin to.
 func getPebbleRoot() ([]byte, error) {
+	// Don't validate Pebble's cert, so we can avoid hardcoding its test root
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // Test-only fixture
