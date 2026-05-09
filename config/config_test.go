@@ -1,6 +1,9 @@
 package config_test
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -63,6 +66,57 @@ func TestLoadConfig(t *testing.T) {
 
 	if !reflect.DeepEqual(cfg, &expected) {
 		t.Fatalf("got:\n%v\nwant:\n%v", cfg, &expected)
+	}
+}
+
+// TestRoundTrip ensures a Config can be marshaled and reloaded losslessly.
+// configgen relies on this to write a config that test-certs-site can read.
+func TestRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	original := config.Config{
+		ListenAddr: ":5001",
+		DebugAddr:  ":9001",
+		Sites: []config.Site{
+			{
+				IssuerCN: "Pebble Root CA abcdef",
+				IssuerO:  "ISRG",
+				KeyType:  config.KeyTypeP256,
+				Domains: config.Domains{
+					Valid:   "valid.localhost",
+					Expired: "expired.localhost",
+					Revoked: "revoked.localhost",
+				},
+			},
+		},
+		ACME: config.ACME{
+			Directory:            "https://pebble:14000/dir",
+			TermsOfServiceAgreed: true,
+		},
+		DataDir:          "/data",
+		LogDebug:         true,
+		RevokeDelay:      config.Duration(time.Second),
+		CRLCheckInterval: config.Duration(time.Second),
+	}
+
+	body, err := json.Marshal(&original)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	path := filepath.Join(t.TempDir(), "roundtrip.json")
+	err = os.WriteFile(path, body, 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	loaded, err := config.Load(path)
+	if err != nil {
+		t.Fatalf("loading round-tripped config: %v", err)
+	}
+
+	if !reflect.DeepEqual(loaded, &original) {
+		t.Fatalf("round-trip mismatch:\ngot:  %#v\nwant: %#v", loaded, &original)
 	}
 }
 

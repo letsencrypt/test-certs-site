@@ -26,15 +26,17 @@ This is a standalone Go program.
 go run main.go -config [path/to/config.json]
 ```
 
-See `config/config.go` for the configuration schema. See `config/testdata/test.json`
-or `integration/test-certs-site-config.json` for examples of valid configurations.
+See `config/config.go` for the configuration schema and
+`config/testdata/test.json` for an example of a valid configuration. The
+integration test config is generated at runtime by `integration/configgen`.
 
 ## Testing locally
 
 We provide a `docker-compose.yml` file for local testing. It will automatically
 deploy [Pebble](https://github.com/letsencrypt/pebble), a test CA. Execute:
+
 ```shell
-docker-compose up --build
+docker compose up --build
 ```
 
 Then, access one of the test sites.
