@@ -82,6 +82,7 @@ func run(rootsURL, outputPath string, timeout time.Duration) error {
 		LogDebug:         true,
 		RevokeDelay:      config.Duration(time.Second),
 		CRLCheckInterval: config.Duration(time.Second),
+		IssueRetryWindow: config.Duration(time.Second),
 	}
 
 	body, err := json.MarshalIndent(cfg, "", "  ")

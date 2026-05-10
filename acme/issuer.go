@@ -7,6 +7,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"log/slog"
+	mathrand "math/rand/v2"
 	"slices"
 	"time"
 
@@ -26,6 +27,10 @@ type issuer struct {
 	issuerO  string
 	keyType  string
 	profile  string
+
+	// retryWindow is the upper bound on the random delay used when scheduling
+	// a retry after an issuance failure.
+	retryWindow time.Duration
 
 	client   *lego.Client
 	logger   *slog.Logger
@@ -54,8 +59,16 @@ func (i *issuer) start(ctx context.Context) {
 	if time.Now().After(renewAt) {
 		rerunAt, err := i.issue(ctx)
 		if err != nil {
-			i.logger.Error("issuing new certificate; will retry", slogErr(err))
-			nextRun = time.Now().Add(time.Hour)
+			// Pick a delay uniformly in [retryWindow/10, retryWindow). The
+			// floor keeps us from immediately re-hammering the ACME server
+			// when several issuers fail in close succession.
+			minDelay := i.retryWindow / 10                                                         //nolint:mnd
+			retryDelay := minDelay + time.Duration(mathrand.Int64N(int64(i.retryWindow-minDelay))) //nolint:gosec // Not security-sensitive use
+			nextRun = time.Now().Add(retryDelay)
+			i.logger.Error("issuing new certificate; will retry",
+				slogErr(err),
+				slog.Duration("retryIn", retryDelay),
+				slog.Time("retryAt", nextRun))
 		} else {
 			nextRun = rerunAt
 		}

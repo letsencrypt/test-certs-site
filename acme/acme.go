@@ -164,6 +164,12 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 		revokeDelay = 25 * time.Hour //nolint:mnd
 	}
 
+	issueRetryWindow := time.Duration(cfg.IssueRetryWindow)
+	if issueRetryWindow == 0 {
+		// 24 hours spreads retries widely enough to avoid burning through ACME rate limits.
+		issueRetryWindow = 24 * time.Hour //nolint:mnd
+	}
+
 	for _, site := range cfg.Sites {
 		for domain, c := range map[string]checker{
 			site.Domains.Valid: &valid{
@@ -186,6 +192,8 @@ func New(cfg *config.Config, store *storage.Storage, schedule *scheduler.Schedul
 				issuerO:  site.IssuerO,
 				keyType:  site.KeyType,
 				profile:  site.Profile,
+
+				retryWindow: issueRetryWindow,
 
 				client:   client,
 				logger:   slog.With(slog.String("domain", domain)),

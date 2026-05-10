@@ -52,6 +52,7 @@ func TestLoadConfig(t *testing.T) {
 		TextTemplate:     "testdata/template.txt",
 		RevokeDelay:      config.Duration(time.Hour),
 		CRLCheckInterval: config.Duration(time.Minute),
+		IssueRetryWindow: config.Duration(12 * time.Hour),
 	}
 
 	_, err := config.Load("non-existant.json")
@@ -97,6 +98,7 @@ func TestRoundTrip(t *testing.T) {
 		LogDebug:         true,
 		RevokeDelay:      config.Duration(time.Second),
 		CRLCheckInterval: config.Duration(time.Second),
+		IssueRetryWindow: config.Duration(time.Second),
 	}
 
 	body, err := json.Marshal(&original)

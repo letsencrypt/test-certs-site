@@ -108,6 +108,13 @@ type Config struct {
 
 	// CRLCheckInterval is the re-checking interval for CRLs
 	CRLCheckInterval Duration
+
+	// IssueRetryWindow bounds the random delay used when retrying after an
+	// issuance failure. The next attempt is scheduled at a uniformly random
+	// time in [0, IssueRetryWindow). Spreading retries reduces the chance of
+	// burning through ACME rate limits when a misconfiguration causes every
+	// attempt to fail. Defaults to 24h if unset.
+	IssueRetryWindow Duration
 }
 
 // Site configures a particular site.

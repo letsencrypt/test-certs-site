@@ -32,5 +32,6 @@
   "htmlTemplate": "testdata/template.html",
   "textTemplate": "testdata/template.txt",
   "revokeDelay": "1h",
-  "CRLCheckInterval": "1m"
+  "CRLCheckInterval": "1m",
+  "issueRetryWindow": "12h"
 }
