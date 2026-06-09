@@ -3,7 +3,7 @@ module github.com/letsencrypt/test-certs-site
 go 1.25.0
 
 require (
-	github.com/go-acme/lego/v4 v4.34.0
+	github.com/go-acme/lego/v4 v4.35.2
 	github.com/prometheus/client_golang v1.23.2
 	golang.org/x/crypto/x509roots/fallback v0.0.0-20260323153451-8400f4a93807
 )
