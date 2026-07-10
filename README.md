@@ -13,10 +13,10 @@ CA/Browser forum Baseline Requirements. They contain the following requirement:
 It uses the ACME protocol to obtain certificates. It serves a simple website
 with some information explaining what the test site is for.
 
-
-From the CA/Browser Forum TLS Baseline Requirements: 
-
 While this was built for Let's Encrypt, it should be usable by other ACME CAs.
+
+For more information, see the
+[Let's Encrypt blog post](https://letsencrypt.org/2026/04/10/test-sites).
 
 ## Running test-certs-site
 
