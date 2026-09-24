@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"math/big"
 	"testing"
 	"time"
@@ -46,8 +47,8 @@ func signCert(t *testing.T, tmpl, parent *x509.Certificate, parentKey crypto.Sig
 
 // makeChain returns a PEM bundle of leaf + intermediate, where the intermediate
 // has the given issuer CN and Organization as its Issuer field (to mimic an
-// ACME-issued chain).
-func makeChain(t *testing.T, intermediateIssuerCN string, intermediateIssuerO []string) []byte {
+// ACME-issued chain), and the leaf has the given CRL distribution points.
+func makeChain(t *testing.T, intermediateIssuerCN string, intermediateIssuerO []string, leafCRLDPs []string) []byte {
 	t.Helper()
 
 	notBefore := time.Now().Add(-time.Hour)
@@ -74,11 +75,12 @@ func makeChain(t *testing.T, intermediateIssuerCN string, intermediateIssuerO []
 	}, rootCert, rootKey)
 
 	leafCert, _ := signCert(t, &x509.Certificate{
-		SerialNumber: big.NewInt(3),
-		Subject:      pkix.Name{CommonName: "leaf.example"},
-		NotBefore:    notBefore,
-		NotAfter:     notAfter,
-		DNSNames:     []string{"leaf.example"},
+		SerialNumber:          big.NewInt(3),
+		Subject:               pkix.Name{CommonName: "leaf.example"},
+		NotBefore:             notBefore,
+		NotAfter:              notAfter,
+		DNSNames:              []string{"leaf.example"},
+		CRLDistributionPoints: leafCRLDPs,
 	}, intCert, intKey)
 
 	var buf bytes.Buffer
@@ -92,10 +94,66 @@ func makeChain(t *testing.T, intermediateIssuerCN string, intermediateIssuerO []
 	return buf.Bytes()
 }
 
+// mustParseChain parses a PEM bundle from makeChain, failing the test on error.
+func mustParseChain(t *testing.T, bundle []byte) []*x509.Certificate {
+	t.Helper()
+
+	chain, err := parseChain(bundle)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return chain
+}
+
+func TestParseChain(t *testing.T) {
+	t.Parallel()
+
+	bundle := makeChain(t, "Root YE", nil, nil)
+
+	chain, err := parseChain(bundle)
+	if err != nil {
+		t.Fatalf("valid chain should parse, got: %v", err)
+	}
+	if len(chain) != 2 {
+		t.Fatalf("expected 2 certificates, got %d", len(chain))
+	}
+	if chain[0].Subject.CommonName != "leaf.example" {
+		t.Fatalf("expected leaf first, got CN %q", chain[0].Subject.CommonName)
+	}
+	if chain[1].Subject.CommonName != "Test Intermediate" {
+		t.Fatalf("expected intermediate second, got CN %q", chain[1].Subject.CommonName)
+	}
+
+	block, _ := pem.Decode(bundle)
+
+	_, err = parseChain(block.Bytes)
+	if err == nil {
+		t.Fatal("expected error for DER input, since lego returns a PEM bundle")
+	}
+
+	_, err = parseChain(nil)
+	if err == nil {
+		t.Fatal("expected error for empty bundle")
+	}
+
+	_, err = parseChain([]byte("not a pem"))
+	if err == nil {
+		t.Fatal("expected error for non-PEM input")
+	}
+
+	keyFirst := append(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: []byte("junk")}), bundle...)
+
+	_, err = parseChain(keyFirst)
+	if err == nil {
+		t.Fatal("expected error for non-certificate PEM block")
+	}
+}
+
 func TestVerifyIssuerChain(t *testing.T) {
 	t.Parallel()
 
-	chain := makeChain(t, "Root YE", []string{"ISRG"})
+	chain := mustParseChain(t, makeChain(t, "Root YE", []string{"ISRG"}, nil))
 
 	err := verifyIssuerChain(chain, "Root YE", "")
 	if err != nil {
@@ -117,7 +175,7 @@ func TestVerifyIssuerChain(t *testing.T) {
 		t.Fatal("expected error for mismatched issuer O")
 	}
 
-	noO := makeChain(t, "Root YE", nil)
+	noO := mustParseChain(t, makeChain(t, "Root YE", nil, nil))
 
 	err = verifyIssuerChain(noO, "Root YE", "")
 	if err != nil {
@@ -131,11 +189,29 @@ func TestVerifyIssuerChain(t *testing.T) {
 
 	err = verifyIssuerChain(nil, "Root YE", "")
 	if err == nil {
-		t.Fatal("expected error for empty bundle")
+		t.Fatal("expected error for empty chain")
+	}
+}
+
+func TestVerifyCRLDistributionPoints(t *testing.T) {
+	t.Parallel()
+
+	withCRL := mustParseChain(t, makeChain(t, "Root YE", nil, []string{"http://crl.example/1.crl"}))
+
+	err := verifyCRLDistributionPoints(withCRL)
+	if err != nil {
+		t.Fatalf("leaf with CRL distribution point should verify, got: %v", err)
 	}
 
-	err = verifyIssuerChain([]byte("not a pem"), "Root YE", "")
+	noCRL := mustParseChain(t, makeChain(t, "Root YE", nil, nil))
+
+	err = verifyCRLDistributionPoints(noCRL)
+	if !errors.Is(err, errNoCRL) {
+		t.Fatalf("leaf without CRL distribution points should be rejected with errNoCRL, got: %v", err)
+	}
+
+	err = verifyCRLDistributionPoints(nil)
 	if err == nil {
-		t.Fatal("expected error for non-PEM input")
+		t.Fatal("expected error for empty chain")
 	}
 }
