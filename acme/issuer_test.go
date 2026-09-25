@@ -45,10 +45,13 @@ func signCert(t *testing.T, tmpl, parent *x509.Certificate, parentKey crypto.Sig
 	return cert, key
 }
 
+// testRootCN is the CN of the root that makeChain's intermediate is issued by.
+const testRootCN = "Root YE"
+
 // makeChain returns a PEM bundle of leaf + intermediate, where the intermediate
-// has the given issuer CN and Organization as its Issuer field (to mimic an
+// has testRootCN and the given Organization as its Issuer field (to mimic an
 // ACME-issued chain), and the leaf has the given CRL distribution points.
-func makeChain(t *testing.T, intermediateIssuerCN string, intermediateIssuerO []string, leafCRLDPs []string) []byte {
+func makeChain(t *testing.T, intermediateIssuerO []string, leafCRLDPs []string) []byte {
 	t.Helper()
 
 	notBefore := time.Now().Add(-time.Hour)
@@ -56,7 +59,7 @@ func makeChain(t *testing.T, intermediateIssuerCN string, intermediateIssuerO []
 
 	rootCert, rootKey := signCert(t, &x509.Certificate{
 		SerialNumber:          big.NewInt(1),
-		Subject:               pkix.Name{CommonName: intermediateIssuerCN, Organization: intermediateIssuerO},
+		Subject:               pkix.Name{CommonName: testRootCN, Organization: intermediateIssuerO},
 		NotBefore:             notBefore,
 		NotAfter:              notAfter,
 		KeyUsage:              x509.KeyUsageCertSign,
@@ -109,7 +112,7 @@ func mustParseChain(t *testing.T, bundle []byte) []*x509.Certificate {
 func TestParseChain(t *testing.T) {
 	t.Parallel()
 
-	bundle := makeChain(t, "Root YE", nil, nil)
+	bundle := makeChain(t, nil, nil)
 
 	chain, err := parseChain(bundle)
 	if err != nil {
@@ -153,14 +156,14 @@ func TestParseChain(t *testing.T) {
 func TestVerifyIssuerChain(t *testing.T) {
 	t.Parallel()
 
-	chain := mustParseChain(t, makeChain(t, "Root YE", []string{"ISRG"}, nil))
+	chain := mustParseChain(t, makeChain(t, []string{"ISRG"}, nil))
 
-	err := verifyIssuerChain(chain, "Root YE", "")
+	err := verifyIssuerChain(chain, testRootCN, "")
 	if err != nil {
 		t.Fatalf("CN-only match should verify, got: %v", err)
 	}
 
-	err = verifyIssuerChain(chain, "Root YE", "ISRG")
+	err = verifyIssuerChain(chain, testRootCN, "ISRG")
 	if err != nil {
 		t.Fatalf("CN+O match should verify, got: %v", err)
 	}
@@ -170,24 +173,24 @@ func TestVerifyIssuerChain(t *testing.T) {
 		t.Fatal("expected error for mismatched issuer CN")
 	}
 
-	err = verifyIssuerChain(chain, "Root YE", "Acme Inc")
+	err = verifyIssuerChain(chain, testRootCN, "Acme Inc")
 	if err == nil {
 		t.Fatal("expected error for mismatched issuer O")
 	}
 
-	noO := mustParseChain(t, makeChain(t, "Root YE", nil, nil))
+	noO := mustParseChain(t, makeChain(t, nil, nil))
 
-	err = verifyIssuerChain(noO, "Root YE", "")
+	err = verifyIssuerChain(noO, testRootCN, "")
 	if err != nil {
 		t.Fatalf("CN-only match against cert with no O should verify, got: %v", err)
 	}
 
-	err = verifyIssuerChain(noO, "Root YE", "ISRG")
+	err = verifyIssuerChain(noO, testRootCN, "ISRG")
 	if err == nil {
 		t.Fatal("expected error when configured O is not present")
 	}
 
-	err = verifyIssuerChain(nil, "Root YE", "")
+	err = verifyIssuerChain(nil, testRootCN, "")
 	if err == nil {
 		t.Fatal("expected error for empty chain")
 	}
@@ -196,14 +199,14 @@ func TestVerifyIssuerChain(t *testing.T) {
 func TestVerifyCRLDistributionPoints(t *testing.T) {
 	t.Parallel()
 
-	withCRL := mustParseChain(t, makeChain(t, "Root YE", nil, []string{"http://crl.example/1.crl"}))
+	withCRL := mustParseChain(t, makeChain(t, nil, []string{"http://crl.example/1.crl"}))
 
 	err := verifyCRLDistributionPoints(withCRL)
 	if err != nil {
 		t.Fatalf("leaf with CRL distribution point should verify, got: %v", err)
 	}
 
-	noCRL := mustParseChain(t, makeChain(t, "Root YE", nil, nil))
+	noCRL := mustParseChain(t, makeChain(t, nil, nil))
 
 	err = verifyCRLDistributionPoints(noCRL)
 	if !errors.Is(err, errNoCRL) {
