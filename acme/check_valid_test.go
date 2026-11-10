@@ -1,23 +1,24 @@
 package acme
 
 import (
+	"context"
 	"crypto/x509"
 	"log/slog"
 	"math/big"
 	"testing"
 	"time"
 
-	"github.com/go-acme/lego/v4/acme"
-	"github.com/go-acme/lego/v4/acme/api"
-	"github.com/go-acme/lego/v4/certificate"
+	"github.com/go-acme/lego/v5/acme"
+	"github.com/go-acme/lego/v5/acme/api"
+	"github.com/go-acme/lego/v5/certificate"
 )
 
 type mockARI struct {
-	response *certificate.RenewalInfoResponse
+	response *certificate.RenewalInfo
 	err      error
 }
 
-func (a mockARI) GetRenewalInfo(_ certificate.RenewalInfoRequest) (*certificate.RenewalInfoResponse, error) {
+func (a mockARI) GetRenewalInfo(_ context.Context, _ *x509.Certificate) (*certificate.RenewalInfo, error) {
 	return a.response, a.err
 }
 
@@ -74,12 +75,14 @@ func TestValidARI(t *testing.T) {
 
 	v := &valid{
 		logger: slog.Default(),
-		ari: mockARI{response: &certificate.RenewalInfoResponse{
-			SuggestedWindow: acme.Window{
-				Start: minuteAhead,
-				End:   hourAhead,
+		ari: mockARI{response: &certificate.RenewalInfo{
+			ExtendedRenewalInfo: &acme.ExtendedRenewalInfo{
+				SuggestedWindow: acme.Window{
+					Start: minuteAhead,
+					End:   hourAhead,
+				},
+				RetryAfter: time.Hour,
 			},
-			RetryAfter: time.Hour,
 		}},
 	}
 

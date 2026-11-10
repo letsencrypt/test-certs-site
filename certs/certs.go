@@ -2,6 +2,7 @@
 package certs
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"log/slog"
@@ -11,7 +12,7 @@ import (
 	"github.com/letsencrypt/test-certs-site/config"
 	"github.com/letsencrypt/test-certs-site/storage"
 
-	"github.com/go-acme/lego/v4/challenge/tlsalpn01"
+	"github.com/go-acme/lego/v5/challenge/tlsalpn01"
 )
 
 // CertManager manages the issued certificates
@@ -140,7 +141,7 @@ func (c *CertManager) get(info *tls.ClientHelloInfo) (*tls.Certificate, error) {
 
 // Present is a method from the lego challenge.Provider interface.
 // It creates and stores a TLS-ALPN-01 challenge certificate.
-func (c *CertManager) Present(domain, _, keyAuth string) error {
+func (c *CertManager) Present(_ context.Context, domain, _, keyAuth string) error {
 	challengeCert, err := tlsalpn01.ChallengeCert(domain, keyAuth)
 	if err != nil {
 		return fmt.Errorf("creating challenge certificate: %w", err)
@@ -156,7 +157,7 @@ func (c *CertManager) Present(domain, _, keyAuth string) error {
 
 // CleanUp implements the lego challenge.Provider interface.
 // It removes the challenge certificate once it is no longer needed.
-func (c *CertManager) CleanUp(domain, _, _ string) error {
+func (c *CertManager) CleanUp(_ context.Context, domain, _, _ string) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

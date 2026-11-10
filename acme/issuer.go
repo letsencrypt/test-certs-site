@@ -10,8 +10,8 @@ import (
 	"slices"
 	"time"
 
-	"github.com/go-acme/lego/v4/certificate"
-	"github.com/go-acme/lego/v4/lego"
+	"github.com/go-acme/lego/v5/certificate"
+	"github.com/go-acme/lego/v5/lego"
 
 	"github.com/letsencrypt/test-certs-site/certs"
 	"github.com/letsencrypt/test-certs-site/scheduler"
@@ -75,7 +75,7 @@ func (i *issuer) issue(ctx context.Context) (time.Time, error) {
 	if err != nil {
 		i.logger.Info("couldn't read next certificate so issuing", slogErr(err))
 
-		next, err = i.issueNext()
+		next, err = i.issueNext(ctx)
 		if err != nil {
 			return time.Time{}, err
 		}
@@ -94,7 +94,7 @@ func (i *issuer) issue(ctx context.Context) (time.Time, error) {
 	if err != nil {
 		// checkReady can return an error if the current "next" cert is broken (eg, expired)
 		// and so we need to issue a new one to start over.
-		_, errNext := i.issueNext()
+		_, errNext := i.issueNext(ctx)
 		if errNext != nil {
 			return time.Time{}, errNext
 		}
@@ -120,13 +120,13 @@ func (i *issuer) issue(ctx context.Context) (time.Time, error) {
 }
 
 // issueNext is called to actually issue the next certificate
-func (i *issuer) issueNext() (tls.Certificate, error) {
+func (i *issuer) issueNext(ctx context.Context) (tls.Certificate, error) {
 	i.logger.Info("issuing new next certificate")
 	key, err := i.store.StoreNextKey(i.domain, i.keyType)
 	if err != nil {
 		return tls.Certificate{}, fmt.Errorf("could not store next key: %w", err)
 	}
-	resp, err := i.client.Certificate.Obtain(certificate.ObtainRequest{
+	resp, err := i.client.Certificate.Obtain(ctx, certificate.ObtainRequest{
 		Profile:        i.profile,
 		Domains:        []string{i.domain},
 		Bundle:         true,
@@ -150,7 +150,7 @@ func (i *issuer) issueNext() (tls.Certificate, error) {
 	if i.shouldRevoke() {
 		// Revoke with reason keyCompromise so browsers actually process this revocation
 		reasonKeyCompromise := uint(1)
-		err := i.client.Certificate.RevokeWithReason(resp.Certificate, &reasonKeyCompromise)
+		err := i.client.Certificate.RevokeWithReason(ctx, resp.Certificate, &reasonKeyCompromise)
 		if err != nil {
 			// TODO: if we failed to revoke, we should probably retry revoking
 			return tls.Certificate{}, fmt.Errorf("could not revoke certificate: %w", err)
