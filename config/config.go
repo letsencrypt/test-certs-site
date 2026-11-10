@@ -14,6 +14,9 @@ const (
 
 	// KeyTypeRSA2048 is one of the valid key types in configuration.
 	KeyTypeRSA2048 = "rsa2048"
+
+	// KeyTypeMLDSA44 is one of the valid key types in configuration.
+	KeyTypeMLDSA44 = "mldsa44"
 )
 
 // Load a configuration file from cfgPath.
@@ -45,7 +48,7 @@ func validate(cfg *Config) error {
 	var errs []error
 	for i, site := range cfg.Sites {
 		switch site.KeyType {
-		case KeyTypeP256, KeyTypeRSA2048:
+		case KeyTypeP256, KeyTypeRSA2048, KeyTypeMLDSA44:
 			// Valid key types
 		default:
 			errs = append(errs, fmt.Errorf("site %d unsupported key type: %s", i, site.KeyType))

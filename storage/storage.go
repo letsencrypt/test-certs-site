@@ -5,6 +5,7 @@ import (
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
+	"crypto/mldsa"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/tls"
@@ -121,8 +122,7 @@ func (s *Storage) StoreACME(directory string, accountURI string, key *ecdsa.Priv
 	return json.NewEncoder(file).Encode(acct)
 }
 
-// StoreNextKey generates a new "next" key, writing it to disk.
-func (s *Storage) StoreNextKey(domain string, keyType string) (crypto.Signer, error) {
+func generateKey(keyType string) (crypto.Signer, error) {
 	var key crypto.Signer
 	switch keyType {
 	case config.KeyTypeP256:
@@ -138,9 +138,25 @@ func (s *Storage) StoreNextKey(domain string, keyType string) (crypto.Signer, er
 			return nil, err
 		}
 		key = rsaKey
+	case config.KeyTypeMLDSA44:
+		mldsaKey, err := mldsa.GenerateKey(mldsa.MLDSA44())
+		if err != nil {
+			return nil, err
+		}
+		key = mldsaKey
 	default:
 		// Should be unreachable due to config validation
 		return nil, fmt.Errorf("unknown key type: %s", keyType)
+	}
+
+	return key, nil
+}
+
+// StoreNextKey generates a new "next" key, writing it to disk.
+func (s *Storage) StoreNextKey(domain string, keyType string) (crypto.Signer, error) {
+	key, err := generateKey(keyType)
+	if err != nil {
+		return nil, err
 	}
 
 	keyBytes, err := x509.MarshalPKCS8PrivateKey(key)
