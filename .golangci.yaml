@@ -5,9 +5,11 @@ linters:
     - depguard
     - err113
     - exhaustruct
+    - exhaustruct_v5
     - funlen
     - godot
     - godox
+    - gomodguard
     - lll
     - musttag
     - perfsprint

@@ -14,14 +14,20 @@ import (
 func TestNewHandler(t *testing.T) {
 	t.Parallel()
 
+	const (
+		expiredDomain = "expired.test"
+		revokedDomain = "revoked.test"
+		txtURL        = "/?txt"
+	)
+
 	testCfg := config.Config{
 		Sites: []config.Site{
 			{
 				IssuerCN: "used car sales",
 				Domains: config.Domains{
 					Valid:   "valid.test",
-					Expired: "expired.test",
-					Revoked: "revoked.test",
+					Expired: expiredDomain,
+					Revoked: revokedDomain,
 				},
 			},
 		},
@@ -76,7 +82,7 @@ func TestNewHandler(t *testing.T) {
 		{
 			domain:  "valid.test",
 			handler: defaultHandler,
-			url:     "/?txt",
+			url:     txtURL,
 			bodyHas: []string{
 				"# valid.test",
 				"This test website, valid.test, is intended for",
@@ -84,7 +90,7 @@ func TestNewHandler(t *testing.T) {
 			},
 		},
 		{
-			domain:  "expired.test",
+			domain:  expiredDomain,
 			handler: defaultHandler,
 			url:     "/?html",
 			bodyHas: []string{
@@ -95,25 +101,25 @@ func TestNewHandler(t *testing.T) {
 			},
 		},
 		{
-			domain:  "revoked.test",
+			domain:  revokedDomain,
 			handler: defaultHandler,
-			url:     "/?txt",
+			url:     txtURL,
 			bodyHas: []string{
 				"# revoked.test",
 				"The certificate is revoked.",
 			},
 		},
 		{
-			domain:  "revoked.test",
+			domain:  revokedDomain,
 			handler: customHandler,
-			url:     "/?txt",
+			url:     txtURL,
 			bodyHas: []string{
 				"Text Template",
 				".Domain: revoked.test",
 			},
 		},
 		{
-			domain:  "expired.test",
+			domain:  expiredDomain,
 			handler: customHandler,
 			url:     "/?html",
 			bodyHas: []string{
@@ -126,7 +132,7 @@ func TestNewHandler(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.domain, func(t *testing.T) {
 			t.Parallel()
-			request := httptest.NewRequest(http.MethodGet, test.url, nil)
+			request := httptest.NewRequestWithContext(t.Context(), http.MethodGet, test.url, nil)
 			request.TLS = &tls.ConnectionState{
 				ServerName: test.domain,
 			}

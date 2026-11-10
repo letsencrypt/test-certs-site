@@ -1,6 +1,6 @@
 module github.com/letsencrypt/test-certs-site
 
-go 1.25.0
+go 1.27.0
 
 require (
 	github.com/go-acme/lego/v4 v4.35.2

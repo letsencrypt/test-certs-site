@@ -76,7 +76,7 @@ func run(args []string) error {
 func main() {
 	err := run(os.Args)
 	if err != nil {
-		slog.Error(err.Error())
+		slog.Error("exiting", slog.String("error", err.Error()))
 		os.Exit(1)
 	}
 }
