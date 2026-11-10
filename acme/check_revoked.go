@@ -3,6 +3,7 @@ package acme
 import (
 	"context"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -10,6 +11,8 @@ import (
 	"slices"
 	"time"
 )
+
+var errNoCRL = errors.New("certificate has no CRL distribution points")
 
 type revoked struct {
 	http   *http.Client
@@ -21,10 +24,7 @@ type revoked struct {
 
 func (r *revoked) checkCRL(ctx context.Context, cert, issuer *x509.Certificate) (bool, error) {
 	if len(cert.CRLDistributionPoints) == 0 {
-		r.logger.Info("No CRL found")
-
-		// Assume revoked in the no-CRL case
-		return true, nil
+		return false, errNoCRL
 	}
 
 	url := cert.CRLDistributionPoints[0]
@@ -85,6 +85,12 @@ func (r *revoked) checkReady(ctx context.Context, cert, issuer *x509.Certificate
 	isRevoked, err := r.checkCRL(ctx, cert, issuer)
 	if err != nil {
 		r.logger.Warn("Error checking CRL", slogErr(err))
+
+		// If the certificate has no CRL distribution points, we can't check if
+		// it's revoked, and we should throw it out.
+		if errors.Is(err, errNoCRL) {
+			return time.Time{}, err
+		}
 
 		return now.Add(r.checkInterval), nil
 	}

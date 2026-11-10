@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"errors"
 	"log/slog"
 	"math/big"
 	"net/http"
@@ -68,6 +69,15 @@ func TestCheckRevoked(t *testing.T) {
 	}
 	if readyTime.Before(now.Add(r.delay)) {
 		t.Fatalf("should have waited for revocation delay, got %v", readyTime)
+	}
+
+	_, err = r.checkReady(t.Context(), &x509.Certificate{
+		SerialNumber: big.NewInt(2222),
+		NotBefore:    now.Add(-r.delay),
+		NotAfter:     now.Add(time.Hour),
+	}, caCert)
+	if !errors.Is(err, errNoCRL) {
+		t.Fatalf("cert without CRL distribution points should be rejected with errNoCRL, got %v", err)
 	}
 
 	readyTime, err = r.checkReady(t.Context(), &x509.Certificate{

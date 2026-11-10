@@ -137,20 +137,32 @@ func (i *issuer) issueNext() (tls.Certificate, error) {
 		return tls.Certificate{}, fmt.Errorf("could not obtain certificate: %w", err)
 	}
 
+	chain, err := parseChain(resp.Certificate)
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("could not parse certificate chain: %w", err)
+	}
+
 	// Lego silently falls back to the CA's default chain when no alternate
 	// chain matches PreferredChain, and PreferredChain only matches Issuer
 	// CN. We must never serve the wrong chain on this site, so reject the
 	// certificate if the chain doesn't end at the expected issuer (matched
 	// on both CN and, if configured, Organization).
-	err = verifyIssuerChain(resp.Certificate, i.issuerCN, i.issuerO)
+	err = verifyIssuerChain(chain, i.issuerCN, i.issuerO)
 	if err != nil {
 		return tls.Certificate{}, fmt.Errorf("could not verify issuer chain: %w", err)
 	}
 
 	if i.shouldRevoke() {
+		// If the certificate has no CRL distribution points, we won't be able
+		// to check if it's revoked.
+		err = verifyCRLDistributionPoints(chain)
+		if err != nil {
+			return tls.Certificate{}, fmt.Errorf("could not verify CRL distribution points: %w", err)
+		}
+
 		// Revoke with reason keyCompromise so browsers actually process this revocation
 		reasonKeyCompromise := uint(1)
-		err := i.client.Certificate.RevokeWithReason(resp.Certificate, &reasonKeyCompromise)
+		err = i.client.Certificate.RevokeWithReason(resp.Certificate, &reasonKeyCompromise)
 		if err != nil {
 			// TODO: if we failed to revoke, we should probably retry revoking
 			return tls.Certificate{}, fmt.Errorf("could not revoke certificate: %w", err)
@@ -178,12 +190,10 @@ func (i *issuer) takeNext() error {
 	return i.manager.LoadCertificate(i.domain)
 }
 
-// verifyIssuerChain checks that the topmost certificate in the PEM bundle is
-// issued by issuerCN, and (if non-empty) by issuerO. The bundle returned by
-// Lego does not contain the root, so the top certificate is typically the
-// intermediate, and its Issuer fields name the root.
-func verifyIssuerChain(bundle []byte, issuerCN, issuerO string) error {
-	var top *x509.Certificate
+// parseChain decodes a PEM certificate chain returned by Lego into its
+// certificates in order, leaf first.
+func parseChain(bundle []byte) ([]*x509.Certificate, error) {
+	var chain []*x509.Certificate
 
 	rest := bundle
 	for {
@@ -195,20 +205,34 @@ func verifyIssuerChain(bundle []byte, issuerCN, issuerO string) error {
 		}
 
 		if block.Type != "CERTIFICATE" {
-			continue
+			return nil, fmt.Errorf("unexpected PEM block type %q in chain", block.Type)
 		}
 
 		cert, err := x509.ParseCertificate(block.Bytes)
 		if err != nil {
-			return fmt.Errorf("parsing certificate in chain: %w", err)
+			return nil, fmt.Errorf("parsing certificate in chain: %w", err)
 		}
 
-		top = cert
+		chain = append(chain, cert)
 	}
 
-	if top == nil {
+	if len(chain) == 0 {
+		return nil, fmt.Errorf("no certificates found in chain")
+	}
+
+	return chain, nil
+}
+
+// verifyIssuerChain checks that the topmost certificate in the chain is
+// issued by issuerCN, and (if non-empty) by issuerO. The chain returned by
+// Lego does not contain the root, so the top certificate is typically the
+// intermediate, and its Issuer fields name the root.
+func verifyIssuerChain(chain []*x509.Certificate, issuerCN, issuerO string) error {
+	if len(chain) == 0 {
 		return fmt.Errorf("no certificates found in chain")
 	}
+
+	top := chain[len(chain)-1]
 
 	if top.Issuer.CommonName != issuerCN {
 		return fmt.Errorf("chain does not end at expected issuer CN %q: top certificate issued by CN %q",
@@ -218,6 +242,21 @@ func verifyIssuerChain(bundle []byte, issuerCN, issuerO string) error {
 	if issuerO != "" && !slices.Contains(top.Issuer.Organization, issuerO) {
 		return fmt.Errorf("chain does not end at expected issuer O %q: top certificate issued by O %v",
 			issuerO, top.Issuer.Organization)
+	}
+
+	return nil
+}
+
+// verifyCRLDistributionPoints checks that the leaf (first) certificate in the
+// chain lists at least one CRL distribution point, so that we can later check
+// whether it has been revoked.
+func verifyCRLDistributionPoints(chain []*x509.Certificate) error {
+	if len(chain) == 0 {
+		return fmt.Errorf("no certificates found in chain")
+	}
+
+	if len(chain[0].CRLDistributionPoints) == 0 {
+		return errNoCRL
 	}
 
 	return nil
