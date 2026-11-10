@@ -40,6 +40,16 @@ func TestLoadConfig(t *testing.T) {
 					Revoked: "revoked.isrg.example.org",
 				},
 			},
+			{
+				IssuerCN: "Post-Quantum Salad Root Greens",
+				KeyType:  config.KeyTypeMLDSA44,
+				Profile:  "mtc",
+				Domains: config.Domains{
+					Valid:   "valid.pq.example.org",
+					Expired: "expired.pq.example.org",
+					Revoked: "revoked.pq.example.org",
+				},
+			},
 		},
 
 		ACME: config.ACME{

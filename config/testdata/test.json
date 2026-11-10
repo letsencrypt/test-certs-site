@@ -22,6 +22,16 @@
         "expired": "expired.isrg.example.org",
         "revoked": "revoked.isrg.example.org"
       }
+    },
+    {
+      "issuerCN": "Post-Quantum Salad Root Greens",
+      "keyType": "mldsa44",
+      "profile": "mtc",
+      "domains": {
+        "valid": "valid.pq.example.org",
+        "expired": "expired.pq.example.org",
+        "revoked": "revoked.pq.example.org"
+      }
     }
   ],
   "acme": {

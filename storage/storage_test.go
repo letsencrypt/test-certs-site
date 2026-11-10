@@ -25,13 +25,12 @@ func TestStorage(t *testing.T) {
 
 	const domain = "interesting.salad"
 
+	keyTypes := []string{config.KeyTypeP256, config.KeyTypeRSA2048, config.KeyTypeMLDSA44}
+
 	// Go through the lifecycle 3 times
 	for i := range 3 {
-		// Alternate key types to test both
-		keyType := config.KeyTypeP256
-		if i%2 == 1 {
-			keyType = config.KeyTypeRSA2048
-		}
+		// Alternate key types to test each
+		keyType := keyTypes[i%len(keyTypes)]
 		key, err := storage.StoreNextKey(domain, keyType)
 		if err != nil {
 			t.Fatal(err)
