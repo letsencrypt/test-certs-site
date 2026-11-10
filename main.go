@@ -65,7 +65,7 @@ func run(args []string) error {
 
 	schedule := scheduler.New(ctx)
 
-	err = acme.New(cfg, store, schedule, certManager)
+	err = acme.New(ctx, cfg, store, schedule, certManager)
 	if err != nil {
 		return err
 	}

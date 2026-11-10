@@ -8,12 +8,12 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/go-acme/lego/v4/acme/api"
-	"github.com/go-acme/lego/v4/certificate"
+	"github.com/go-acme/lego/v5/acme/api"
+	"github.com/go-acme/lego/v5/certificate"
 )
 
 type ari interface {
-	GetRenewalInfo(request certificate.RenewalInfoRequest) (*certificate.RenewalInfoResponse, error)
+	GetRenewalInfo(ctx context.Context, cert *x509.Certificate) (*certificate.RenewalInfo, error)
 }
 
 type valid struct {
@@ -29,10 +29,8 @@ func (v *valid) checkReady(_ context.Context, cert, _ *x509.Certificate) (time.T
 	return time.Time{}, nil
 }
 
-func (v *valid) checkRenew(_ context.Context, cert *x509.Certificate) time.Time {
-	resp, err := v.ari.GetRenewalInfo(certificate.RenewalInfoRequest{
-		Cert: cert,
-	})
+func (v *valid) checkRenew(ctx context.Context, cert *x509.Certificate) time.Time {
+	resp, err := v.ari.GetRenewalInfo(ctx, cert)
 	if errors.Is(err, api.ErrNoARI) {
 		// without ARI, renew at 50% lifetime
 		return halfTime(cert)

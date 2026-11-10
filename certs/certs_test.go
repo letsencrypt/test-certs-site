@@ -110,7 +110,7 @@ func TestACME(t *testing.T) {
 
 	testDomain := "mytestsite.com"
 
-	err = manager.Present(testDomain, "unused-token", "the-key-auth")
+	err = manager.Present(t.Context(), testDomain, "unused-token", "the-key-auth")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,7 +138,7 @@ func TestACME(t *testing.T) {
 		t.Fatalf("Didn't find ACME identifier")
 	}
 
-	err = manager.CleanUp(testDomain, "", "")
+	err = manager.CleanUp(t.Context(), testDomain, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
