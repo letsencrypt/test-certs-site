@@ -43,7 +43,7 @@ func TestLoadConfig(t *testing.T) {
 			{
 				IssuerCN: "Post-Quantum Salad Root Greens",
 				KeyType:  config.KeyTypeMLDSA44,
-				Profile:  "pq-mldsa-std",
+				Profile:  "mtc",
 				Domains: config.Domains{
 					Valid:   "valid.pq.example.org",
 					Expired: "expired.pq.example.org",

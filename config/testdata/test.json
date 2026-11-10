@@ -26,7 +26,7 @@
     {
       "issuerCN": "Post-Quantum Salad Root Greens",
       "keyType": "mldsa44",
-      "profile": "pq-mldsa-std",
+      "profile": "mtc",
       "domains": {
         "valid": "valid.pq.example.org",
         "expired": "expired.pq.example.org",
