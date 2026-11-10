@@ -75,11 +75,9 @@ func TestValidARI(t *testing.T) {
 	v := &valid{
 		logger: slog.Default(),
 		ari: mockARI{response: &certificate.RenewalInfoResponse{
-			RenewalInfoResponse: acme.RenewalInfoResponse{
-				SuggestedWindow: acme.Window{
-					Start: minuteAhead,
-					End:   hourAhead,
-				},
+			SuggestedWindow: acme.Window{
+				Start: minuteAhead,
+				End:   hourAhead,
 			},
 			RetryAfter: time.Hour,
 		}},

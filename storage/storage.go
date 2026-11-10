@@ -117,6 +117,7 @@ func (s *Storage) StoreACME(directory string, accountURI string, key *ecdsa.Priv
 		return err
 	}
 
+	// #nosec G117 -- serializing private key to file is intended behavior
 	return json.NewEncoder(file).Encode(acct)
 }
 
