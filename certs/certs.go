@@ -50,11 +50,13 @@ func New(cfg *config.Config, store *storage.Storage) (*CertManager, error) {
 		}
 		c.expired[site.Domains.Valid] = false
 
-		err = c.LoadCertificate(site.Domains.Revoked)
-		if err != nil {
-			slog.Info("No current revoked certificate", slog.String("domain", site.Domains.Revoked), slog.String("error", err.Error()))
+		if site.Domains.Revoked != "" {
+			err = c.LoadCertificate(site.Domains.Revoked)
+			if err != nil {
+				slog.Info("No current revoked certificate", slog.String("domain", site.Domains.Revoked), slog.String("error", err.Error()))
+			}
+			c.expired[site.Domains.Revoked] = false
 		}
-		c.expired[site.Domains.Revoked] = false
 
 		err = c.LoadCertificate(site.Domains.Expired)
 		if err != nil {

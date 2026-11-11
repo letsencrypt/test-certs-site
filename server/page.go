@@ -41,9 +41,11 @@ func newHandler(cfg *config.Config, registry prometheus.Registerer) (http.Handle
 			IssuerCN: site.IssuerCN,
 			State:    "valid",
 		}
-		domains[site.Domains.Revoked] = info{
-			IssuerCN: site.IssuerCN,
-			State:    "revoked",
+		if site.Domains.Revoked != "" {
+			domains[site.Domains.Revoked] = info{
+				IssuerCN: site.IssuerCN,
+				State:    "revoked",
+			}
 		}
 		domains[site.Domains.Expired] = info{
 			IssuerCN: site.IssuerCN,

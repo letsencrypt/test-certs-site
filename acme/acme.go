@@ -166,19 +166,23 @@ func New(ctx context.Context, cfg *config.Config, store *storage.Storage, schedu
 	}
 
 	for _, site := range cfg.Sites {
-		for domain, c := range map[string]checker{
+		checkers := map[string]checker{
 			site.Domains.Valid: &valid{
 				ari:    client.Certificate,
 				logger: slog.With(slog.String("domain", site.Domains.Valid)),
 			},
-			site.Domains.Revoked: &revoked{
+			site.Domains.Expired: expired{},
+		}
+		if site.Domains.Revoked != "" {
+			checkers[site.Domains.Revoked] = &revoked{
 				http:          crlClient,
 				logger:        slog.With(slog.String("domain", site.Domains.Revoked)),
 				checkInterval: crlCheckInterval,
 				delay:         revokeDelay,
-			},
-			site.Domains.Expired: expired{},
-		} {
+			}
+		}
+
+		for domain, c := range checkers {
 			i := issuer{
 				checker: c,
 

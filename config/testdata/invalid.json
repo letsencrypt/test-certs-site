@@ -15,6 +15,20 @@
         "expired": "expired.salad",
         "revoked": "revoked.salad"
       }
+    },
+    {
+      "issuerCN": "root",
+      "keyType": "p256",
+      "domains": {
+        "revoked": "revoked-only.salad"
+      }
+    },
+    {
+      "issuerCN": "root",
+      "keyType": "p256",
+      "domains": {
+        "revoked": "another-revoked-only.salad"
+      }
     }
   ]
 }
