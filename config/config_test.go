@@ -50,6 +50,15 @@ func TestLoadConfig(t *testing.T) {
 					Revoked: "revoked.pq.example.org",
 				},
 			},
+			{
+				MTCIssuerCertificate: "testdata/mtc-issuer.pem",
+				KeyType:              config.KeyTypeMLDSA44,
+				Domains: config.Domains{
+					Valid:   "valid.mtc.example.org",
+					Expired: "expired.mtc.example.org",
+					Revoked: "revoked.mtc.example.org",
+				},
+			},
 		},
 
 		ACME: config.ACME{
@@ -145,6 +154,8 @@ func TestInvalidConfig(t *testing.T) {
 		"site 1 duplicate domain: valid.salad",
 		"site 0 unsupported key type: 3des",
 		"site 1 unsupported key type: ",
+		"site 2 has both issuer CN and MTC issuer certificate",
+		"site 3 has both issuer O and MTC issuer certificate",
 	} {
 		if !strings.Contains(errStr, expected) {
 			t.Errorf("got error %q, want error containing %q", errStr, expected)

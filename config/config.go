@@ -42,7 +42,7 @@ func Load(cfgPath string) (*Config, error) {
 }
 
 // validate the loaded configuration.
-// This checks domains are unique, key types are valid, and that an issuer CN is set.
+// This checks domains are unique, key types are valid, and that an issuer is set.
 func validate(cfg *Config) error {
 	domains := make(map[string]struct{}, 0)
 	var errs []error
@@ -62,9 +62,7 @@ func validate(cfg *Config) error {
 			domains[d] = struct{}{}
 		}
 
-		if site.IssuerCN == "" {
-			errs = append(errs, fmt.Errorf("site %d missing issuer CN", i))
-		}
+		errs = append(errs, validateIssuer(i, site)...)
 	}
 
 	if cfg.ACME.Directory == "" {
@@ -76,6 +74,29 @@ func validate(cfg *Config) error {
 	}
 
 	return errors.Join(errs...)
+}
+
+// validateIssuer checks that the site identifies its issuer either by CN (and
+// optionally O), or by certificate, but not both.
+func validateIssuer(i int, site Site) []error {
+	var errs []error
+
+	switch {
+	case site.MTCIssuerCertificate == "" && site.IssuerCN == "":
+		errs = append(errs, fmt.Errorf("site %d missing issuer CN or MTC issuer certificate", i))
+	case site.MTCIssuerCertificate == "":
+		// Identified by CN. IssuerO is optional.
+	default:
+		if site.IssuerCN != "" {
+			errs = append(errs, fmt.Errorf("site %d has both issuer CN and MTC issuer certificate", i))
+		}
+
+		if site.IssuerO != "" {
+			errs = append(errs, fmt.Errorf("site %d has both issuer O and MTC issuer certificate", i))
+		}
+	}
+
+	return errs
 }
 
 // Config is the structure of the JSON configuration file.
@@ -116,12 +137,20 @@ type Config struct {
 // Site configures a particular site.
 type Site struct {
 	// IssuerCN that the certificate chain must end in.
+	// Exactly one of IssuerCN or MTCIssuerCertificate must be set.
 	IssuerCN string
 
 	// IssuerO that the certificate chain must end in. Optional.
 	// If set, the topmost certificate's Issuer Organization must contain
 	// this value in addition to matching IssuerCN.
 	IssuerO string
+
+	// MTCIssuerCertificate is the path to the PEM certificate of the merkle tree
+	// CA expected to issue the certificate. Must be set if issuing a merkle
+	// tree certificate, which is verified against this CA: it must name the CA
+	// as its issuer, and carry a valid cosignature from the CA's key.
+	// Can't be combined with IssuerCN or IssuerO.
+	MTCIssuerCertificate string
 
 	// KeyType to use for this site. Should be "p256" or "rsa2048".
 	KeyType string
