@@ -127,10 +127,6 @@ func (i *issuer) issue(ctx context.Context) (time.Time, error) {
 	return readyTime, nil
 }
 
-func (i *issuer) isMerkleTreeCert() bool {
-	return i.mtcIssuer != nil
-}
-
 // issueNext is called to actually issue the next certificate
 func (i *issuer) issueNext(ctx context.Context) (tls.Certificate, error) {
 	i.logger.Info("issuing new next certificate")
@@ -155,14 +151,9 @@ func (i *issuer) issueNext(ctx context.Context) (tls.Certificate, error) {
 	}
 
 	if i.mtcIssuer != nil {
-		cert, err := certcrypto.ParsePEMCertificate(resp.Certificate)
+		err = verifyMTC(resp.Certificate, i.mtcIssuer)
 		if err != nil {
-			return tls.Certificate{}, fmt.Errorf("parsing certificate from ACME: %w", err)
-		}
-
-		err = mtx509.VerifyStandalone(cert.Raw, i.mtcIssuer)
-		if err != nil {
-			return tls.Certificate{}, fmt.Errorf("could not verify merkle tree certificate: %w", err)
+			return tls.Certificate{}, err
 		}
 	} else {
 		// Lego silently falls back to the CA's default chain when no alternate
@@ -249,5 +240,18 @@ func verifyIssuerChain(bundle []byte, issuerCN, issuerO string) error {
 			issuerO, top.Issuer.Organization)
 	}
 
+	return nil
+}
+
+func verifyMTC(cert []byte, issuer *x509.Certificate) error {
+	c, err := certcrypto.ParsePEMCertificate(cert)
+	if err != nil {
+		return fmt.Errorf("parsing certificate from ACME: %w", err)
+	}
+
+	err = mtx509.VerifyStandalone(c.Raw, issuer)
+	if err != nil {
+		return fmt.Errorf("could not verify merkle tree certificate: %w", err)
+	}
 	return nil
 }
