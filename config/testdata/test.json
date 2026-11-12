@@ -32,6 +32,15 @@
         "expired": "expired.pq.example.org",
         "revoked": "revoked.pq.example.org"
       }
+    },
+    {
+      "mtcIssuerCertificate": "testdata/mtc-issuer.pem",
+      "keyType": "mldsa44",
+      "domains": {
+        "valid": "valid.mtc.example.org",
+        "expired": "expired.mtc.example.org",
+        "revoked": "revoked.mtc.example.org"
+      }
     }
   ],
   "acme": {

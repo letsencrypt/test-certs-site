@@ -10,9 +10,11 @@ import (
 	"slices"
 	"time"
 
+	"github.com/go-acme/lego/v5/certcrypto"
 	"github.com/go-acme/lego/v5/certificate"
 	"github.com/go-acme/lego/v5/lego"
 
+	"github.com/letsencrypt/boulder/trees/mtx509"
 	"github.com/letsencrypt/test-certs-site/certs"
 	"github.com/letsencrypt/test-certs-site/scheduler"
 	"github.com/letsencrypt/test-certs-site/storage"
@@ -21,11 +23,12 @@ import (
 type issuer struct {
 	checker
 
-	domain   string
-	issuerCN string
-	issuerO  string
-	keyType  string
-	profile  string
+	domain    string
+	issuerCN  string
+	issuerO   string
+	mtcIssuer *x509.Certificate
+	keyType   string
+	profile   string
 
 	client   *lego.Client
 	logger   *slog.Logger
@@ -81,13 +84,18 @@ func (i *issuer) issue(ctx context.Context) (time.Time, error) {
 		}
 	}
 
-	if len(next.Certificate) <= 1 {
-		return time.Time{}, fmt.Errorf("no issuer certificate: chain length %d", len(next.Certificate))
-	}
+	var issuerCert *x509.Certificate
+	if i.mtcIssuer != nil {
+		issuerCert = i.mtcIssuer
+	} else {
+		if len(next.Certificate) <= 1 {
+			return time.Time{}, fmt.Errorf("no issuer certificate: chain length %d", len(next.Certificate))
+		}
 
-	issuerCert, err := x509.ParseCertificate(next.Certificate[1])
-	if err != nil {
-		return time.Time{}, fmt.Errorf("parsing issuer certificate: %w", err)
+		issuerCert, err = x509.ParseCertificate(next.Certificate[1])
+		if err != nil {
+			return time.Time{}, fmt.Errorf("parsing issuer certificate: %w", err)
+		}
 	}
 
 	readyTime, err := i.checkReady(ctx, next.Leaf, issuerCert)
@@ -126,25 +134,37 @@ func (i *issuer) issueNext(ctx context.Context) (tls.Certificate, error) {
 	if err != nil {
 		return tls.Certificate{}, fmt.Errorf("could not store next key: %w", err)
 	}
+
+	preferredChain := ""
+	if i.mtcIssuer == nil {
+		preferredChain = i.issuerCN
+	}
 	resp, err := i.client.Certificate.Obtain(ctx, certificate.ObtainRequest{
 		Profile:        i.profile,
 		Domains:        []string{i.domain},
 		Bundle:         true,
 		PrivateKey:     key,
-		PreferredChain: i.issuerCN,
+		PreferredChain: preferredChain,
 	})
 	if err != nil {
 		return tls.Certificate{}, fmt.Errorf("could not obtain certificate: %w", err)
 	}
 
-	// Lego silently falls back to the CA's default chain when no alternate
-	// chain matches PreferredChain, and PreferredChain only matches Issuer
-	// CN. We must never serve the wrong chain on this site, so reject the
-	// certificate if the chain doesn't end at the expected issuer (matched
-	// on both CN and, if configured, Organization).
-	err = verifyIssuerChain(resp.Certificate, i.issuerCN, i.issuerO)
-	if err != nil {
-		return tls.Certificate{}, fmt.Errorf("could not verify issuer chain: %w", err)
+	if i.mtcIssuer != nil {
+		err = verifyMTC(resp.Certificate, i.mtcIssuer)
+		if err != nil {
+			return tls.Certificate{}, err
+		}
+	} else {
+		// Lego silently falls back to the CA's default chain when no alternate
+		// chain matches PreferredChain, and PreferredChain only matches Issuer
+		// CN. We must never serve the wrong chain on this site, so reject the
+		// certificate if the chain doesn't end at the expected issuer (matched
+		// on both CN and, if configured, Organization).
+		err = verifyIssuerChain(resp.Certificate, i.issuerCN, i.issuerO)
+		if err != nil {
+			return tls.Certificate{}, fmt.Errorf("could not verify issuer chain: %w", err)
+		}
 	}
 
 	if i.shouldRevoke() {
@@ -218,6 +238,20 @@ func verifyIssuerChain(bundle []byte, issuerCN, issuerO string) error {
 	if issuerO != "" && !slices.Contains(top.Issuer.Organization, issuerO) {
 		return fmt.Errorf("chain does not end at expected issuer O %q: top certificate issued by O %v",
 			issuerO, top.Issuer.Organization)
+	}
+
+	return nil
+}
+
+func verifyMTC(cert []byte, issuer *x509.Certificate) error {
+	c, err := certcrypto.ParsePEMCertificate(cert)
+	if err != nil {
+		return fmt.Errorf("parsing certificate from ACME: %w", err)
+	}
+
+	err = mtx509.VerifyStandalone(c.Raw, issuer)
+	if err != nil {
+		return fmt.Errorf("could not verify merkle tree certificate: %w", err)
 	}
 
 	return nil
