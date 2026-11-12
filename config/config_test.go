@@ -50,6 +50,16 @@ func TestLoadConfig(t *testing.T) {
 					Revoked: "revoked.pq.example.org",
 				},
 			},
+			{
+				IssuerCN: "Post-Quantum Salad Root Greens",
+				KeyType:  config.KeyTypeMLDSA44,
+				Profile:  "mtc",
+				Domains: config.Domains{
+					Valid:   "valid.norevoke.pq.example.org",
+					Expired: "expired.norevoke.pq.example.org",
+					// Revoked is optional, and omitted for this site
+				},
+			},
 		},
 
 		ACME: config.ACME{
@@ -145,9 +155,18 @@ func TestInvalidConfig(t *testing.T) {
 		"site 1 duplicate domain: valid.salad",
 		"site 0 unsupported key type: 3des",
 		"site 1 unsupported key type: ",
+		"site 2 missing valid domain",
+		"site 2 missing expired domain",
+		"site 3 missing valid domain",
+		"site 3 missing expired domain",
 	} {
 		if !strings.Contains(errStr, expected) {
 			t.Errorf("got error %q, want error containing %q", errStr, expected)
 		}
+	}
+
+	// Unset domains are reported as missing, not as duplicates of each other.
+	if strings.Contains(errStr, "site 3 duplicate domain") {
+		t.Errorf("got error %q, want no duplicate error for empty domains", errStr)
 	}
 }

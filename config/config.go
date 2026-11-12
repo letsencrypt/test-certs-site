@@ -42,7 +42,7 @@ func Load(cfgPath string) (*Config, error) {
 }
 
 // validate the loaded configuration.
-// This checks domains are unique, key types are valid, and that an issuer CN is set.
+// This checks domains are set and unique, key types are valid, and that an issuer CN is set.
 func validate(cfg *Config) error {
 	domains := make(map[string]struct{}, 0)
 	var errs []error
@@ -54,13 +54,7 @@ func validate(cfg *Config) error {
 			errs = append(errs, fmt.Errorf("site %d unsupported key type: %s", i, site.KeyType))
 		}
 
-		for _, d := range []string{site.Domains.Valid, site.Domains.Revoked, site.Domains.Expired} {
-			_, seen := domains[d]
-			if seen {
-				errs = append(errs, fmt.Errorf("site %d duplicate domain: %s", i, d))
-			}
-			domains[d] = struct{}{}
-		}
+		errs = append(errs, validateDomains(i, site.Domains, domains)...)
 
 		if site.IssuerCN == "" {
 			errs = append(errs, fmt.Errorf("site %d missing issuer CN", i))
@@ -76,6 +70,36 @@ func validate(cfg *Config) error {
 	}
 
 	return errors.Join(errs...)
+}
+
+// validateDomains checks the valid and expired domains are set, and that no
+// domain has been seen before. The revoked domain is optional.
+// Domains are added to seen.
+func validateDomains(i int, d Domains, seen map[string]struct{}) []error {
+	var errs []error
+
+	if d.Valid == "" {
+		errs = append(errs, fmt.Errorf("site %d missing valid domain", i))
+	}
+
+	if d.Expired == "" {
+		errs = append(errs, fmt.Errorf("site %d missing expired domain", i))
+	}
+
+	for _, domain := range []string{d.Valid, d.Revoked, d.Expired} {
+		if domain == "" {
+			// Either reported above, or an unset optional revoked domain.
+			continue
+		}
+
+		_, dup := seen[domain]
+		if dup {
+			errs = append(errs, fmt.Errorf("site %d duplicate domain: %s", i, domain))
+		}
+		seen[domain] = struct{}{}
+	}
+
+	return errs
 }
 
 // Config is the structure of the JSON configuration file.
@@ -138,6 +162,7 @@ type Site struct {
 type Domains struct {
 	Valid   string
 	Expired string
+	// Revoked is optional. If empty, no revoked page is served.
 	Revoked string
 }
 

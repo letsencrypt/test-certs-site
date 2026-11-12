@@ -154,3 +154,43 @@ func TestNewHandler(t *testing.T) {
 		})
 	}
 }
+
+// TestNoRevokedDomain checks that a site without a revoked domain doesn't
+// register a page for the empty domain.
+func TestNoRevokedDomain(t *testing.T) {
+	t.Parallel()
+
+	testCfg := config.Config{
+		Sites: []config.Site{
+			{
+				IssuerCN: "used car sales",
+				Domains: config.Domains{
+					Valid:   "valid.example",
+					Expired: "expired.example",
+				},
+			},
+		},
+	}
+
+	handler, err := newHandler(&testCfg, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for host, wantCode := range map[string]int{
+		"valid.example":   http.StatusOK,
+		"expired.example": http.StatusOK,
+		"":                http.StatusNotFound,
+	} {
+		req := httptest.NewRequestWithContext(t.Context(), http.MethodGet, "/", nil)
+		req.Host = host
+		req.TLS = &tls.ConnectionState{ServerName: host}
+
+		w := httptest.NewRecorder()
+		handler(w, req)
+
+		if w.Code != wantCode {
+			t.Errorf("host %q: got status %d, want %d", host, w.Code, wantCode)
+		}
+	}
+}
