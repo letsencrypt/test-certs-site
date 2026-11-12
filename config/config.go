@@ -77,7 +77,7 @@ func validate(cfg *Config) error {
 }
 
 // validateIssuer checks that the site identifies its issuer either by CN (and
-// optionally O), or by certificate, but not both.
+// optionally O), or by MTCIssuerCertificate, but not both.
 func validateIssuer(i int, site Site) []error {
 	var errs []error
 
@@ -147,9 +147,7 @@ type Site struct {
 
 	// MTCIssuerCertificate is the path to the PEM certificate of the merkle tree
 	// CA expected to issue the certificate. Must be set if issuing a merkle
-	// tree certificate, which is verified against this CA: it must name the CA
-	// as its issuer, and carry a valid cosignature from the CA's key.
-	// Can't be combined with IssuerCN or IssuerO.
+	// tree certificate. Mutually exclusive with IssuerCN and IssuerO.
 	MTCIssuerCertificate string
 
 	// KeyType to use for this site. Should be "p256" or "rsa2048".
