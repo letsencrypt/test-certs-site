@@ -253,5 +253,6 @@ func verifyMTC(cert []byte, issuer *x509.Certificate) error {
 	if err != nil {
 		return fmt.Errorf("could not verify merkle tree certificate: %w", err)
 	}
+
 	return nil
 }
