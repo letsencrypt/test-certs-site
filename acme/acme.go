@@ -7,13 +7,17 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/x509"
 	"errors"
+	"fmt"
 	"log/slog"
 	mathrand "math/rand/v2"
 	"net/http"
+	"os"
 	"time"
 
 	legoAcme "github.com/go-acme/lego/v5/acme"
+	"github.com/go-acme/lego/v5/certcrypto"
 	"github.com/go-acme/lego/v5/lego"
 	"github.com/go-acme/lego/v5/log"
 	"github.com/go-acme/lego/v5/registration"
@@ -166,6 +170,19 @@ func New(ctx context.Context, cfg *config.Config, store *storage.Storage, schedu
 	}
 
 	for _, site := range cfg.Sites {
+		var mtcIssuer *x509.Certificate
+		if site.MTCIssuerCertificate != "" {
+			contents, err := os.ReadFile(site.MTCIssuerCertificate)
+			if err != nil {
+				return err
+			}
+
+			mtcIssuer, err = certcrypto.ParsePEMCertificate(contents)
+			if err != nil {
+				return fmt.Errorf("parsing certificate: %w", err)
+			}
+		}
+
 		for domain, c := range map[string]checker{
 			site.Domains.Valid: &valid{
 				ari:    client.Certificate,
@@ -187,6 +204,8 @@ func New(ctx context.Context, cfg *config.Config, store *storage.Storage, schedu
 				issuerO:  site.IssuerO,
 				keyType:  site.KeyType,
 				profile:  site.Profile,
+
+				mtcIssuer: mtcIssuer,
 
 				client:   client,
 				logger:   slog.With(slog.String("domain", domain)),

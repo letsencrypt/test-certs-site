@@ -15,6 +15,26 @@
         "expired": "expired.salad",
         "revoked": "revoked.salad"
       }
+    },
+    {
+      "issuerCN": "root",
+      "mtcIssuerCertificate": "issuer.pem",
+      "keyType": "mldsa44",
+      "domains": {
+        "valid": "valid.both.salad",
+        "expired": "expired.both.salad",
+        "revoked": "revoked.both.salad"
+      }
+    },
+    {
+      "issuerO": "org",
+      "mtcIssuerCertificate": "issuer.pem",
+      "keyType": "mldsa44",
+      "domains": {
+        "valid": "valid.org.salad",
+        "expired": "expired.org.salad",
+        "revoked": "revoked.org.salad"
+      }
     }
   ]
 }
