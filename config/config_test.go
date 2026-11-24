@@ -51,7 +51,7 @@ func TestLoadConfig(t *testing.T) {
 				},
 			},
 			{
-				MTCIssuerCertificate: "testdata/mtc-issuer.pem",
+				MTCIssuerCertificate: "issuer.pem",
 				KeyType:              config.KeyTypeMLDSA44,
 				Domains: config.Domains{
 					Valid:   "valid.mtc.example.org",

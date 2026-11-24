@@ -34,7 +34,7 @@
       }
     },
     {
-      "mtcIssuerCertificate": "testdata/mtc-issuer.pem",
+      "mtcIssuerCertificate": "issuer.pem",
       "keyType": "mldsa44",
       "domains": {
         "valid": "valid.mtc.example.org",
